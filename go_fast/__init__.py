@@ -3,6 +3,7 @@
 from go_fast.booster import RocketBooster
 from go_fast.cache import FastMemoryCache
 from go_fast.compressor import ResponseCompressor
+from go_fast.cdn import CDNConfig, CDNManager
 from go_fast.django_support import DjangoRocketMiddleware
 from go_fast.minifier import FastMinifier
 from go_fast.proxy import SpeedProxyServer
@@ -21,5 +22,7 @@ __all__ = [
     "SpeedProxyServer",
     "DjangoRocketMiddleware",
     "TelemetryTracker",
+    "CDNManager",
+    "CDNConfig",
     "attach",
 ]

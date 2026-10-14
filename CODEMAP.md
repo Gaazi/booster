@@ -46,6 +46,18 @@ Generated with `python refresh_docs.py`.
 - `clear` (line 148): Clear all cached entries.
 - `count` (line 156): Return count of active entries.
 
+## booster/cdn.py
+
+- `CDNConfig` (line 14): Configuration for CDN automated cache synchronization.
+- `CDNManager` (line 45): Zero-overhead multi-CDN cache purger and header generator.
+- `from_env` (line 22): Auto-detect CDN credentials from environment variables.
+- `__init__` (line 48): Internal implementation.
+- `get_cdn_headers` (line 52): Return standardized edge caching headers compatible with all major CDNs.
+- `purge_all` (line 59): Asynchronously purge edge cache across configured CDN provider.
+- `_purge_cloudflare` (line 89): Purge Cloudflare Zone Cache via Client v4 API.
+- `_purge_bunny` (line 99): Purge BunnyCDN Pull Zone Cache.
+- `_purge_fastly` (line 106): Purge Fastly Service Cache.
+
 ## booster/compressor.py
 
 - `is_compressible` (line 30): Determine if content type and payload size qualify for compression.
@@ -113,20 +125,22 @@ Generated with `python refresh_docs.py`.
 
 ## booster/server.py
 
-- `lifespan` (line 23): Close pooled upstream connections when the gateway stops.
-- `serve_dashboard` (line 43): Serve the management and telemetry dashboard.
-- `get_stats` (line 50): Return live telemetry metrics and cache status.
-- `set_target` (line 59): Update target website URL for the accelerator.
-- `clear_cache` (line 72): Flush in-memory cache and reset telemetry.
-- `is_port_open` (line 79): Quickly check if a local port has an active listening server.
-- `detect_local` (line 87): Scan common development ports for running applications.
-- `find_local_target` (line 92): Find a development server with concurrent bounded loopback probes.
-- `gateway_redirect` (line 105): Keep old gateway links working on the isolated upstream origin.
-- `proxy_gateway` (line 114): Proxy requests through the caching and optimization engine.
-- `launch_browser` (line 119): Open user browser to the dashboard.
-- `main` (line 124): Launch the local dashboard and acceleration gateway.
-- `serve_local` (line 137): Run dashboard and gateway on separate origins with shared lifecycle.
-- `stop_servers` (line 149): Stop both origins together on a terminal interrupt or termination.
+- `lifespan` (line 26): Close pooled upstream connections when the gateway stops.
+- `serve_dashboard` (line 46): Serve the management and telemetry dashboard.
+- `get_stats` (line 53): Return live telemetry metrics and cache status.
+- `check_update_api` (line 64): Force an active check for available updates.
+- `apply_update_api` (line 71): Manually apply an available patch or report instructions.
+- `set_target` (line 79): Update target website URL for the accelerator.
+- `clear_cache` (line 92): Flush in-memory cache and reset telemetry.
+- `is_port_open` (line 101): Quickly check if a local port has an active listening server.
+- `detect_local` (line 109): Scan common development ports for running applications.
+- `find_local_target` (line 114): Find a development server with concurrent bounded loopback probes.
+- `gateway_redirect` (line 127): Keep old gateway links working on the isolated upstream origin.
+- `proxy_gateway` (line 136): Proxy requests through the caching and optimization engine.
+- `launch_browser` (line 141): Open user browser to the dashboard.
+- `main` (line 146): Launch the local dashboard and acceleration gateway.
+- `serve_local` (line 159): Run dashboard and gateway on separate origins with shared lifecycle.
+- `stop_servers` (line 171): Stop both origins together on a terminal interrupt or termination.
 
 ## booster/telemetry.py
 
@@ -137,6 +151,15 @@ Generated with `python refresh_docs.py`.
 - `_append_log` (line 64): Append one redacted log while the caller holds the telemetry lock.
 - `get_stats` (line 82): Return summary metrics for dashboard and monitoring.
 - `reset` (line 108): Reset all tracked performance metrics.
+
+## booster/updater.py
+
+- `parse_version` (line 22): Parse a semantic version string into a (major, minor, patch) tuple.
+- `classify_update` (line 35): Classify update level: 'none', 'patch', 'minor', or 'major'.
+- `fetch_latest_release` (line 49): Query GitHub releases API for the latest released version.
+- `apply_patch_update` (line 66): Safely apply a patch update in the background using pip.
+- `check_for_updates` (line 78): Check for available updates with caching and auto-patch application.
+- `_build_update_message` (line 115): Format a clear human-readable status message for the dashboard and CLI.
 
 ## go_fast/__init__.py
 
@@ -181,6 +204,9 @@ Generated with `python refresh_docs.py`.
 - `invalidate_path_prefix` (line 139): Invalidate all cached items whose original path starts with prefix.
 - `clear` (line 148): Clear all cached entries.
 - `count` (line 156): Return count of active entries.
+
+## go_fast/cdn.py
+
 
 ## go_fast/compressor.py
 
@@ -274,6 +300,9 @@ Generated with `python refresh_docs.py`.
 - `get_stats` (line 82): Return summary metrics for dashboard and monitoring.
 - `reset` (line 108): Reset all tracked performance metrics.
 
+## go_fast/updater.py
+
+
 ## run.py
 
 
@@ -288,6 +317,7 @@ Generated with `python refresh_docs.py`.
 graph TD
   __init__ --> booster
   __init__ --> cache
+  __init__ --> cdn
   __init__ --> compressor
   __init__ --> django_support
   __init__ --> minifier
@@ -300,6 +330,7 @@ graph TD
   booster --> http_policy
   booster --> minifier
   booster --> telemetry
+  cdn --> cdn
   django_support --> cache
   django_support --> compressor
   django_support --> http_policy
@@ -316,7 +347,10 @@ graph TD
   proxy --> telemetry
   proxy_transport --> http_policy
   run --> server
+  server --> cdn
   server --> local_security
   server --> proxy
+  server --> updater
   telemetry --> cache
+  updater --> updater
 ```

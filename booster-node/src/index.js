@@ -22,6 +22,11 @@ function booster(options = {}) {
       return next();
     }
 
+    // Authenticated requests must never be cached publicly
+    if (req.headers["authorization"]) {
+      return next();
+    }
+
     if (method !== "GET" && method !== "HEAD") {
       return next();
     }
@@ -56,9 +61,11 @@ function booster(options = {}) {
     // Intercept response
     const originalEnd = res.end;
     const chunks = [];
+    let isStreaming = false;
 
     const originalWrite = res.write;
     res.write = function (chunk, ...args) {
+      isStreaming = true;
       if (chunk) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
       return originalWrite.apply(res, [chunk, ...args]);
     };
@@ -67,22 +74,27 @@ function booster(options = {}) {
       if (chunk) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
       const rawBody = Buffer.concat(chunks);
       const contentType = (res.getHeader("content-type") || "text/plain").toString();
+      const cacheControl = (res.getHeader("cache-control") || "").toString().toLowerCase();
+      const isPrivate = cacheControl.includes("no-store") || cacheControl.includes("private");
 
-      if (res.statusCode === 200 && rawBody.length < 3000000) {
+      if (!isStreaming && !isPrivate && res.statusCode === 200 && rawBody.length < 3000000) {
         const minified = minifier.minify(rawBody, contentType);
         const entry = cache.set(key, path, 200, {}, minified, contentType);
-        res.setHeader("ETag", entry.etag);
+        if (!res.headersSent) res.setHeader("ETag", entry.etag);
       }
 
-      res.setHeader("CDN-Cache-Control", "public, max-age=300, stale-while-revalidate=60");
-      res.setHeader("Surrogate-Control", "max-age=300");
-      res.setHeader("X-Powered-By", "booster-node");
+      if (!res.headersSent) {
+        res.setHeader("CDN-Cache-Control", "public, max-age=300, stale-while-revalidate=60");
+        res.setHeader("Surrogate-Control", "max-age=300");
+        res.setHeader("X-Powered-By", "booster-node");
+      }
       return originalEnd.apply(res, [chunk, ...args]);
     };
 
     next();
   };
 }
+
 
 module.exports = {
   booster,

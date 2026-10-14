@@ -1,6 +1,7 @@
 """Lightweight multi-CDN integration for Cloudflare, BunnyCDN, and Fastly."""
 
 import logging
+import os
 from dataclasses import dataclass
 from typing import Dict, Optional
 
@@ -9,11 +10,9 @@ import httpx
 logger = logging.getLogger("booster.cdn")
 
 
-import os
-
-
 @dataclass
 class CDNConfig:
+
     """Configuration for CDN automated cache synchronization."""
     provider: str = "none"  # "cloudflare", "bunny", "fastly", "none"
     api_token: str = ""
@@ -76,9 +75,16 @@ class CDNManager:
             if provider == "fastly":
                 return await self._purge_fastly(client)
             return False
+        except httpx.RequestError as exc:
+            logger.warning("CDN cache purge network error for %s: %s", provider, exc)
+            return False
+        except Exception as exc:
+            logger.warning("Unexpected error purging CDN %s: %s", provider, exc)
+            return False
         finally:
             if close_client:
                 await client.aclose()
+
 
     async def _purge_cloudflare(self, client: httpx.AsyncClient) -> bool:
         """Purge Cloudflare Zone Cache via Client v4 API."""

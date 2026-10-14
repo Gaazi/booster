@@ -26,6 +26,8 @@ async function fetchStats() {
     document.getElementById("statRequests").textContent = data.total_requests;
     document.getElementById("statCacheCount").textContent = data.cache_count;
     document.getElementById("targetBadge").textContent = "Boosting: " + data.target_url;
+    if (data.update) renderUpdateBanner(data.update);
+
 
     const tbody = document.getElementById("logsTableBody");
     if (data.recent_logs && data.recent_logs.length > 0) {
@@ -95,6 +97,52 @@ async function clearCache() {
     fetchStats();
   } catch (err) {
     alert("Failed to clear cache: " + err);
+  }
+}
+
+function renderUpdateBanner(info) {
+  const banner = document.getElementById("updateBanner");
+  if (!banner || !info || info.update_type === "none") {
+    if (banner) banner.style.display = "none";
+    return;
+  }
+  banner.style.display = "block";
+  const title = document.getElementById("updateTitle");
+  const desc = document.getElementById("updateDesc");
+  const action = document.getElementById("updateAction");
+
+  if (info.update_type === "patch") {
+    if (info.auto_applied) {
+      title.textContent = "✅ Bugfix Patch Auto-Applied";
+      desc.textContent = `Version ${info.latest_version} bug fixes were automatically installed.`;
+      action.innerHTML = "";
+    } else {
+      title.textContent = "⚡ Bugfix Patch Available";
+      desc.textContent = `A quick patch ${info.latest_version} is available.`;
+      action.innerHTML = `<button onclick="applyUpdate()" style="padding: 6px 12px; font-size: 12px;">Update Now</button>`;
+    }
+  } else {
+    title.textContent = `🚀 Upgrade Available: v${info.latest_version}`;
+    desc.textContent = `Run 'pip install --upgrade booster' or view release notes.`;
+    action.innerHTML = info.release_url ? `<a href="${escapeHtml(info.release_url)}" target="_blank" rel="noopener noreferrer" style="color: var(--accent); font-size: 13px; text-decoration: underline;">View Release</a>` : "";
+  }
+}
+
+async function applyUpdate() {
+  try {
+    const res = await fetch("/api/apply-update", {
+      method: "POST",
+      headers: { "X-Go-Fast-Admin": "1" }
+    });
+    const data = await res.json();
+    if (data.success) {
+      alert("Update successfully installed!");
+      fetchStats();
+    } else {
+      alert("Please update manually: pip install --upgrade booster");
+    }
+  } catch (err) {
+    alert("Update request failed: " + err);
   }
 }
 

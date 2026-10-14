@@ -93,5 +93,11 @@ test("booster middleware integration - caching, 304, and CDN headers", async () 
   });
   assert.strictEqual(res2.status, 304);
 
+  // Authenticated request -> bypasses cache
+  const resAuth = await fetch(`http://127.0.0.1:${port}/api/data`, {
+    headers: { authorization: "Bearer secret-token" },
+  });
+  assert.strictEqual(resAuth.status, 200);
+
   server.close();
 });

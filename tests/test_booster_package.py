@@ -20,8 +20,11 @@ def test_top_level_exports_parity() -> None:
         "SpeedProxyServer",
         "DjangoRocketMiddleware",
         "TelemetryTracker",
+        "CDNManager",
+        "CDNConfig",
         "attach",
     }
+
     for name in expected_exports:
         assert hasattr(booster, name), f"booster missing {name}"
         assert hasattr(go_fast, name), f"go_fast missing {name}"

@@ -70,14 +70,18 @@ class FastMemoryCache {
 
   invalidatePrefix(prefix) {
     let count = 0;
+    const toDelete = [];
     for (const [key, path] of this.pathIndex.entries()) {
       if (path.startsWith(prefix)) {
-        this.delete(key);
-        count++;
+        toDelete.push(key);
       }
+    }
+    for (const key of toDelete) {
+      if (this.delete(key)) count++;
     }
     return count;
   }
+
 
   clear() {
     this.store.clear();

@@ -19,6 +19,8 @@ from fastapi.staticfiles import StaticFiles
 from booster.proxy import SpeedProxyServer
 from booster.local_security import LocalAccessGuard
 from booster.cdn import CDNConfig, CDNManager
+from booster.updater import check_for_updates, apply_patch_update
+
 
 @asynccontextmanager
 async def lifespan(application: FastAPI) -> AsyncIterator[None]:
@@ -53,10 +55,27 @@ async def get_stats() -> JSONResponse:
     stats = proxy.telemetry.get_stats()
     stats["target_url"] = proxy.target_url
     stats["cache_count"] = proxy.cache.count()
+    stats["version"] = "1.0.0"
+    stats["update"] = await check_for_updates()
     return JSONResponse(stats)
 
 
+@app.get("/api/check-update")
+async def check_update_api() -> JSONResponse:
+    """Force an active check for available updates."""
+    info = await check_for_updates(force=True)
+    return JSONResponse(info)
+
+
+@app.post("/api/apply-update")
+async def apply_update_api() -> JSONResponse:
+    """Manually apply an available patch or report instructions."""
+    success = apply_patch_update()
+    return JSONResponse({"success": success})
+
+
 @app.post("/api/set-target")
+
 async def set_target(payload: Dict[str, str]) -> JSONResponse:
     """Update target website URL for the accelerator."""
     url = payload.get("url", "").strip()
