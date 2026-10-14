@@ -4,7 +4,7 @@ import time
 from typing import Any, Callable
 
 from booster.asgi_response import ASGIResponseOptimizer, parse_headers, representation_headers
-from booster.http_policy import request_cacheable
+from booster.http_policy import request_cacheable, is_static_asset
 from booster.cache import FastMemoryCache
 from booster.compressor import ResponseCompressor
 from booster.minifier import FastMinifier
@@ -14,11 +14,13 @@ parse_asgi_headers = parse_headers
 
 
 class RocketBooster:
-    """Accelerate public responses while leaving personalized traffic untouched."""
+    """Accelerate public and static responses and adaptively optimize dynamic traffic."""
 
     def __init__(self, app: Any, cache_ttl: float = 300.0, max_cache_items: int = 2000,
                  enable_minification: bool = True, enable_compression: bool = True,
-                 min_compress_size: int = 512, _instance: "RocketBooster | None" = None) -> None:
+                 min_compress_size: int = 512, compress_dynamic: bool = False,
+                 surgical_invalidation: bool = False,
+                 _instance: "RocketBooster | None" = None) -> None:
         """Initialize bounded caches or share the instance exposed by attach."""
         if _instance is not None:
             self.__dict__.update(_instance.__dict__)
@@ -31,6 +33,8 @@ class RocketBooster:
         self.telemetry = TelemetryTracker()
         self.enable_minification = enable_minification
         self.enable_compression = enable_compression
+        self.compress_dynamic = compress_dynamic
+        self.surgical_invalidation = surgical_invalidation
 
     @classmethod
     def attach(cls, app: Any, **kwargs: Any) -> "RocketBooster":
@@ -47,26 +51,42 @@ class RocketBooster:
                                    scope.get("query_string", b""))
 
     async def __call__(self, scope: dict[str, Any], receive: Callable, send: Callable) -> None:
-        """Bypass private requests and invalidate cached reads around mutations."""
+        """Accelerate static and public reads, optimize dynamic responses, and handle mutations."""
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
         method = scope.get("method", "GET").upper()
+        path = scope.get("path", "/")
         if method in ("POST", "PUT", "DELETE", "PATCH"):
-            self.cache.clear()
+            if self.surgical_invalidation:
+                self.cache.invalidate_path_prefix(path)
+            else:
+                self.cache.clear()
             try:
                 await self.app(scope, receive, send)
             finally:
-                self.cache.clear()
+                if self.surgical_invalidation:
+                    self.cache.invalidate_path_prefix(path)
+                else:
+                    self.cache.clear()
             return
         headers = parse_headers(scope.get("headers", []))
-        if (method != "GET" or not request_cacheable(headers)
-                or any(scope.get(key) for key in ("user", "auth", "session"))):
+        if method != "GET":
             await self.app(scope, receive, send)
             return
-        if await self._handle_get(scope, receive, send, scope.get("path", "/"), headers):
+
+        is_static = is_static_asset(path)
+        if not is_static and (not request_cacheable(headers, is_static=False)
+                or any(scope.get(key) for key in ("user", "auth", "session"))):
+            if self.compress_dynamic:
+                await self._passthrough_and_cache(scope, receive, send, path, headers)
+            else:
+                await self.app(scope, receive, send)
             return
-        await self._passthrough_and_cache(scope, receive, send, scope.get("path", "/"), headers)
+
+        if await self._handle_get(scope, receive, send, path, headers):
+            return
+        await self._passthrough_and_cache(scope, receive, send, path, headers)
 
     async def _handle_get(self, scope: dict[str, Any], receive: Callable, send: Callable,
                           path: str, headers: dict[str, str]) -> bool:

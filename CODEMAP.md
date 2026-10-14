@@ -8,23 +8,24 @@ Generated with `python refresh_docs.py`.
 ## booster/asgi_response.py
 
 - `parse_headers` (line 8): Combine repeated fields so restrictive cache directives cannot be hidden.
-- `ASGIResponseOptimizer` (line 18): Capture one bounded public response and forward all other messages.
-- `representation_headers` (line 70): Replace length, validators and negotiation fields after changing a body.
+- `ASGIResponseOptimizer` (line 18): Capture one bounded response and optimize public or dynamic representations.
+- `representation_headers` (line 96): Replace length, validators and negotiation fields after changing a body.
 - `__init__` (line 21): Keep request state separate from the shared middleware instance.
-- `__call__` (line 28): Forward streams and extensions immediately, optimizing a single body.
-- `_optimized` (line 49): Minify and compress public bytes, preserving unrelated response fields.
+- `__call__` (line 30): Forward streams and extensions immediately, optimizing a single body.
+- `_optimized_cacheable` (line 58): Minify and compress public bytes, preserving unrelated response fields.
+- `_optimized_dynamic` (line 78): Compress private dynamic bytes without storing in shared cache.
 
 ## booster/booster.py
 
-- `RocketBooster` (line 16): Accelerate public responses while leaving personalized traffic untouched.
+- `RocketBooster` (line 16): Accelerate public and static responses and adaptively optimize dynamic traffic.
 - `__init__` (line 19): Initialize bounded caches or share the instance exposed by attach.
-- `attach` (line 36): Register middleware and expose the cache actually serving the app.
-- `cache_key` (line 42): Isolate representations by scheme, host, path and query.
-- `__call__` (line 49): Bypass private requests and invalidate cached reads around mutations.
-- `_handle_get` (line 71): Serve a public cached representation or its conditional response.
-- `_send_304` (line 94): Send a public conditional response without a payload.
-- `_send_cached` (line 101): Send cached content with validators matching the transformed bytes.
-- `_passthrough_and_cache` (line 109): Optimize a bounded response while respecting ASGI streaming semantics.
+- `attach` (line 40): Register middleware and expose the cache actually serving the app.
+- `cache_key` (line 46): Isolate representations by scheme, host, path and query.
+- `__call__` (line 53): Accelerate static and public reads, optimize dynamic responses, and handle mutations.
+- `_handle_get` (line 91): Serve a public cached representation or its conditional response.
+- `_send_304` (line 114): Send a public conditional response without a payload.
+- `_send_cached` (line 121): Send cached content with validators matching the transformed bytes.
+- `_passthrough_and_cache` (line 129): Optimize a bounded response while respecting ASGI streaming semantics.
 
 ## booster/cache.py
 
@@ -72,16 +73,17 @@ Generated with `python refresh_docs.py`.
 - `DjangoRocketMiddleware` (line 12): Cache only explicitly public, bounded and non-streaming Django responses.
 - `__init__` (line 15): Initialize the downstream callable and bounded optimization services.
 - `__call__` (line 23): Bypass personalized requests and invalidate derived reads around writes.
-- `_cached_response` (line 45): Restore headers with a length matching the cached representation.
-- `_store_response` (line 56): Cache only a public response and correct validators after minification.
+- `_cached_response` (line 46): Restore headers with a length matching the cached representation.
+- `_store_response` (line 57): Cache only a public response and correct validators after minification.
 
 ## booster/http_policy.py
 
-- `cache_directives` (line 7): Parse case-insensitive cache directive names without substring matches.
-- `request_cacheable` (line 13): Exclude personalized, conditional and explicitly uncached requests.
-- `response_cacheable` (line 24): Store only responses safe for a shared representation cache.
-- `filtered_headers` (line 36): Remove hop-by-hop fields including fields nominated by Connection.
-- `merge_vary` (line 44): Preserve existing negotiation fields while adding compression.
+- `is_static_asset` (line 13): Check if the path represents an immutable or public static asset.
+- `cache_directives` (line 19): Parse case-insensitive cache directive names without substring matches.
+- `request_cacheable` (line 25): Exclude personalized, conditional and explicitly uncached requests.
+- `response_cacheable` (line 38): Store only responses safe for a shared representation cache.
+- `filtered_headers` (line 57): Remove hop-by-hop fields including fields nominated by Connection.
+- `merge_vary` (line 65): Preserve existing negotiation fields while adding compression.
 
 ## booster/local_security.py
 
@@ -160,8 +162,8 @@ Generated with `python refresh_docs.py`.
 - `apply_patch_update` (line 67): Safely apply a patch update in the background using pip.
 - `check_for_updates` (line 79): Check for available updates with caching and auto-patch application.
 - `_build_update_message` (line 116): Format a clear human-readable status message for the dashboard and CLI.
-- `run_monthly_heartbeat_check` (line 126): Execute low-frequency background check for passive/headless server instances.
-- `start_heartbeat_daemon` (line 146): Run monthly update check in a quiet background daemon loop.
+- `run_monthly_heartbeat_check` (line 131): Execute low-frequency background check for passive/headless server instances.
+- `start_heartbeat_daemon` (line 151): Run monthly update check in a quiet background daemon loop.
 
 ## go_fast/__init__.py
 
@@ -169,23 +171,24 @@ Generated with `python refresh_docs.py`.
 ## go_fast/asgi_response.py
 
 - `parse_headers` (line 8): Combine repeated fields so restrictive cache directives cannot be hidden.
-- `ASGIResponseOptimizer` (line 18): Capture one bounded public response and forward all other messages.
-- `representation_headers` (line 70): Replace length, validators and negotiation fields after changing a body.
+- `ASGIResponseOptimizer` (line 18): Capture one bounded response and optimize public or dynamic representations.
+- `representation_headers` (line 96): Replace length, validators and negotiation fields after changing a body.
 - `__init__` (line 21): Keep request state separate from the shared middleware instance.
-- `__call__` (line 28): Forward streams and extensions immediately, optimizing a single body.
-- `_optimized` (line 49): Minify and compress public bytes, preserving unrelated response fields.
+- `__call__` (line 30): Forward streams and extensions immediately, optimizing a single body.
+- `_optimized_cacheable` (line 58): Minify and compress public bytes, preserving unrelated response fields.
+- `_optimized_dynamic` (line 78): Compress private dynamic bytes without storing in shared cache.
 
 ## go_fast/booster.py
 
-- `RocketBooster` (line 16): Accelerate public responses while leaving personalized traffic untouched.
+- `RocketBooster` (line 16): Accelerate public and static responses and adaptively optimize dynamic traffic.
 - `__init__` (line 19): Initialize bounded caches or share the instance exposed by attach.
-- `attach` (line 36): Register middleware and expose the cache actually serving the app.
-- `cache_key` (line 42): Isolate representations by scheme, host, path and query.
-- `__call__` (line 49): Bypass private requests and invalidate cached reads around mutations.
-- `_handle_get` (line 71): Serve a public cached representation or its conditional response.
-- `_send_304` (line 94): Send a public conditional response without a payload.
-- `_send_cached` (line 101): Send cached content with validators matching the transformed bytes.
-- `_passthrough_and_cache` (line 109): Optimize a bounded response while respecting ASGI streaming semantics.
+- `attach` (line 40): Register middleware and expose the cache actually serving the app.
+- `cache_key` (line 46): Isolate representations by scheme, host, path and query.
+- `__call__` (line 53): Accelerate static and public reads, optimize dynamic responses, and handle mutations.
+- `_handle_get` (line 91): Serve a public cached representation or its conditional response.
+- `_send_304` (line 114): Send a public conditional response without a payload.
+- `_send_cached` (line 121): Send cached content with validators matching the transformed bytes.
+- `_passthrough_and_cache` (line 129): Optimize a bounded response while respecting ASGI streaming semantics.
 
 ## go_fast/cache.py
 
@@ -209,6 +212,15 @@ Generated with `python refresh_docs.py`.
 
 ## go_fast/cdn.py
 
+- `CDNConfig` (line 14): Configuration for CDN automated cache synchronization.
+- `CDNManager` (line 45): Zero-overhead multi-CDN cache purger and header generator.
+- `from_env` (line 22): Auto-detect CDN credentials from environment variables.
+- `__init__` (line 48): Internal implementation.
+- `get_cdn_headers` (line 52): Return standardized edge caching headers compatible with all major CDNs.
+- `purge_all` (line 59): Asynchronously purge edge cache across configured CDN provider.
+- `_purge_cloudflare` (line 89): Purge Cloudflare Zone Cache via Client v4 API.
+- `_purge_bunny` (line 99): Purge BunnyCDN Pull Zone Cache.
+- `_purge_fastly` (line 106): Purge Fastly Service Cache.
 
 ## go_fast/compressor.py
 
@@ -224,16 +236,17 @@ Generated with `python refresh_docs.py`.
 - `DjangoRocketMiddleware` (line 12): Cache only explicitly public, bounded and non-streaming Django responses.
 - `__init__` (line 15): Initialize the downstream callable and bounded optimization services.
 - `__call__` (line 23): Bypass personalized requests and invalidate derived reads around writes.
-- `_cached_response` (line 45): Restore headers with a length matching the cached representation.
-- `_store_response` (line 56): Cache only a public response and correct validators after minification.
+- `_cached_response` (line 46): Restore headers with a length matching the cached representation.
+- `_store_response` (line 57): Cache only a public response and correct validators after minification.
 
 ## go_fast/http_policy.py
 
-- `cache_directives` (line 7): Parse case-insensitive cache directive names without substring matches.
-- `request_cacheable` (line 13): Exclude personalized, conditional and explicitly uncached requests.
-- `response_cacheable` (line 24): Store only responses safe for a shared representation cache.
-- `filtered_headers` (line 36): Remove hop-by-hop fields including fields nominated by Connection.
-- `merge_vary` (line 44): Preserve existing negotiation fields while adding compression.
+- `is_static_asset` (line 13): Check if the path represents an immutable or public static asset.
+- `cache_directives` (line 19): Parse case-insensitive cache directive names without substring matches.
+- `request_cacheable` (line 25): Exclude personalized, conditional and explicitly uncached requests.
+- `response_cacheable` (line 38): Store only responses safe for a shared representation cache.
+- `filtered_headers` (line 57): Remove hop-by-hop fields including fields nominated by Connection.
+- `merge_vary` (line 65): Preserve existing negotiation fields while adding compression.
 
 ## go_fast/local_security.py
 
@@ -332,7 +345,6 @@ graph TD
   booster --> http_policy
   booster --> minifier
   booster --> telemetry
-  cdn --> cdn
   django_support --> cache
   django_support --> compressor
   django_support --> http_policy

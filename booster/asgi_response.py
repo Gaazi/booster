@@ -2,7 +2,7 @@
 
 from typing import Any, Callable
 
-from booster.http_policy import response_cacheable, merge_vary
+from booster.http_policy import response_cacheable, merge_vary, is_static_asset
 
 
 def parse_headers(raw: list[tuple[bytes, bytes]]) -> dict[str, str]:
@@ -16,7 +16,7 @@ def parse_headers(raw: list[tuple[bytes, bytes]]) -> dict[str, str]:
 
 
 class ASGIResponseOptimizer:
-    """Capture one bounded public response and forward all other messages."""
+    """Capture one bounded response and optimize public or dynamic representations."""
 
     def __init__(self, booster: Any, scope: dict[str, Any], send: Callable) -> None:
         """Keep request state separate from the shared middleware instance."""
@@ -24,14 +24,20 @@ class ASGIResponseOptimizer:
         self.start: dict[str, Any] = {}
         self.forwarding = False
         self.generation = booster.cache.generation
+        self.is_static = is_static_asset(scope.get("path", "/"))
+        self.cacheable = False
 
     async def __call__(self, message: dict[str, Any]) -> None:
         """Forward streams and extensions immediately, optimizing a single body."""
         if message["type"] == "http.response.start":
             self.start = dict(message)
+            headers_dict = parse_headers(message.get("headers", []))
+            self.cacheable = response_cacheable(headers_dict, is_static=self.is_static)
+            can_opt = (self.booster.compress_dynamic and message.get("status") == 200
+                       and not any(k.lower() == b"content-encoding" for k, v in message.get("headers", [])))
             self.forwarding = (message.get("status") != 200
                                or message.get("trailers", False)
-                               or not response_cacheable(parse_headers(message.get("headers", []))))
+                               or (not self.cacheable and not can_opt))
             if self.forwarding:
                 await self.send(message)
             return
@@ -44,9 +50,12 @@ class ASGIResponseOptimizer:
             await self.send(self.start)
             await self.send(message)
             return
-        await self._optimized(message.get("body", b""))
+        if self.cacheable:
+            await self._optimized_cacheable(message.get("body", b""))
+        else:
+            await self._optimized_dynamic(message.get("body", b""))
 
-    async def _optimized(self, raw_body: bytes) -> None:
+    async def _optimized_cacheable(self, raw_body: bytes) -> None:
         """Minify and compress public bytes, preserving unrelated response fields."""
         booster = self.booster
         request_headers = parse_headers(self.scope.get("headers", []))
@@ -61,6 +70,23 @@ class ASGIResponseOptimizer:
             body, encoding = booster.compressor.compress(body, content_type,
                                                          request_headers.get("accept-encoding", ""))
         headers = representation_headers(original, body, entry.etag if entry else None, encoding)
+        await self.send({**self.start, "headers": headers})
+        await self.send({"type": "http.response.body", "body": body})
+        booster.telemetry.record_request("GET", "[redacted]", 200, 0, False,
+                                         len(raw_body), len(body), encoding or "none")
+
+    async def _optimized_dynamic(self, raw_body: bytes) -> None:
+        """Compress private dynamic bytes without storing in shared cache."""
+        booster = self.booster
+        request_headers = parse_headers(self.scope.get("headers", []))
+        original = self.start.get("headers", [])
+        content_type = parse_headers(original).get("content-type", "text/plain")
+        body = booster.minifier.minify(raw_body, content_type) if booster.enable_minification else raw_body
+        encoding = None
+        if booster.enable_compression:
+            body, encoding = booster.compressor.compress(body, content_type,
+                                                         request_headers.get("accept-encoding", ""))
+        headers = representation_headers(original, body, None, encoding)
         await self.send({**self.start, "headers": headers})
         await self.send({"type": "http.response.body", "body": body})
         booster.telemetry.record_request("GET", "[redacted]", 200, 0, False,

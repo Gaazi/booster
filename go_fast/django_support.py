@@ -2,7 +2,7 @@
 
 from typing import Any, Callable
 
-from go_fast.http_policy import request_cacheable, response_cacheable
+from go_fast.http_policy import request_cacheable, response_cacheable, is_static_asset
 from go_fast.cache import FastMemoryCache
 from go_fast.compressor import ResponseCompressor
 from go_fast.minifier import FastMinifier
@@ -30,8 +30,9 @@ class DjangoRocketMiddleware:
             finally:
                 self.cache.clear()
         headers = {k.lower(): v for k, v in request.headers.items()}
-        if (method != "GET" or not request_cacheable(headers)
-                or getattr(getattr(request, "user", None), "is_authenticated", False)):
+        is_static = is_static_asset(request.path)
+        if (method != "GET" or (not is_static and (not request_cacheable(headers, is_static=False)
+                or getattr(getattr(request, "user", None), "is_authenticated", False)))):
             return self.get_response(request)
         query = request.META.get("QUERY_STRING", "").encode("latin1")
         key = self.cache.make_key("GET:" + request.scheme + ":" + headers.get("host", ""), request.path, query)
@@ -40,7 +41,7 @@ class DjangoRocketMiddleware:
             return self._cached_response(cached)
         generation = self.cache.generation
         response = self.get_response(request)
-        return self._store_response(request.path, key, response, generation)
+        return self._store_response(request.path, key, response, generation, is_static=is_static)
 
     def _cached_response(self, cached: Any) -> Any:
         """Restore headers with a length matching the cached representation."""
@@ -53,11 +54,12 @@ class DjangoRocketMiddleware:
         response["ETag"] = cached.etag
         return response
 
-    def _store_response(self, path: str, key: str, response: Any, generation: int) -> Any:
+    def _store_response(self, path: str, key: str, response: Any, generation: int,
+                        is_static: bool = False) -> Any:
         """Cache only a public response and correct validators after minification."""
         headers = {k.lower(): v for k, v in response.items()}
         if (response.status_code != 200 or response.streaming or response.cookies
-                or not response_cacheable(headers) or len(response.content) > 2_000_000):
+                or not response_cacheable(headers, is_static=is_static) or len(response.content) > 2_000_000):
             return response
         content_type = response.get("Content-Type", "text/html")
         response.content = self.minifier.minify(response.content, content_type)

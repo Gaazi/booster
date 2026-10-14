@@ -101,3 +101,65 @@ test("booster middleware integration - caching, 304, and CDN headers", async () 
 
   server.close();
 });
+
+test("booster-node - private responses are never cached or leaked", async () => {
+  const middleware = booster();
+  let calls = 0;
+
+  const server = http.createServer((req, res) => {
+    middleware(req, res, () => {
+      calls++;
+      res.setHeader("Content-Type", "text/plain");
+      res.setHeader("Cache-Control", "private, no-cache, no-store");
+      res.end(`User: ${req.headers["x-user"] || "anon"}`);
+    });
+  });
+
+  await new Promise((r) => server.listen(0, "127.0.0.1", r));
+  const port = server.address().port;
+
+  const res1 = await fetch(`http://127.0.0.1:${port}/dashboard`, {
+    headers: { "x-user": "alice" },
+  });
+  assert.strictEqual(await res1.text(), "User: alice");
+
+  const res2 = await fetch(`http://127.0.0.1:${port}/dashboard`, {
+    headers: { "x-user": "bob" },
+  });
+  assert.strictEqual(await res2.text(), "User: bob");
+  assert.strictEqual(calls, 2); // Origin called each time, no cross-user cache leak!
+
+  server.close();
+});
+
+test("booster-node - static assets cached and accelerated", async () => {
+  const middleware = booster();
+  let calls = 0;
+
+  const server = http.createServer((req, res) => {
+    middleware(req, res, () => {
+      calls++;
+      res.setHeader("Content-Type", "text/css");
+      res.setHeader("Cache-Control", "public, max-age=31536000");
+      res.end("body { background: #000; }");
+    });
+  });
+
+  await new Promise((r) => server.listen(0, "127.0.0.1", r));
+  const port = server.address().port;
+
+  const res1 = await fetch(`http://127.0.0.1:${port}/static/bundle.css`, {
+    headers: { "cookie": "session=xyz" },
+  });
+  assert.strictEqual(res1.status, 200);
+  assert.strictEqual(calls, 1);
+
+  const res2 = await fetch(`http://127.0.0.1:${port}/static/bundle.css`, {
+    headers: { "cookie": "session=different" },
+  });
+  assert.strictEqual(res2.status, 200);
+  assert.strictEqual(calls, 1); // Served directly from memory!
+
+  server.close();
+});
+

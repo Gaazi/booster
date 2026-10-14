@@ -5,6 +5,17 @@ const { FastMemoryCache } = require("./cache");
 const { ResponseCompressor } = require("./compressor");
 const { FastMinifier } = require("./minifier");
 
+const STATIC_EXTENSIONS = [
+  ".css", ".js", ".mjs", ".woff", ".woff2", ".ttf", ".eot", ".otf",
+  ".svg", ".png", ".jpg", ".jpeg", ".webp", ".gif", ".ico", ".map"
+];
+
+function isStaticAsset(path) {
+  const clean = (path || "").split("?")[0].toLowerCase();
+  return clean.startsWith("/static/") || clean.startsWith("/assets/") || clean.startsWith("/public/") ||
+         STATIC_EXTENSIONS.some(ext => clean.endsWith(ext));
+}
+
 function booster(options = {}) {
   const cache = new FastMemoryCache(options.maxItems || 2000, options.ttl || 300);
   const compressor = new ResponseCompressor(options.minCompressSize || 512);
@@ -15,6 +26,7 @@ function booster(options = {}) {
     const url = req.url || "/";
     const path = url.split("?")[0];
     const query = url.split("?")[1] || "";
+    const isStatic = isStaticAsset(path);
 
     // Mutation auto-invalidation
     if (["POST", "PUT", "DELETE", "PATCH"].includes(method)) {
@@ -74,13 +86,23 @@ function booster(options = {}) {
       if (chunk) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
       const rawBody = Buffer.concat(chunks);
       const contentType = (res.getHeader("content-type") || "text/plain").toString();
-      const cacheControl = (res.getHeader("cache-control") || "").toString().toLowerCase();
-      const isPrivate = cacheControl.includes("no-store") || cacheControl.includes("private");
+      const isExplicitPrivate = cacheControl.includes("private") || cacheControl.includes("no-store");
+      const hasSetCookie = Boolean(res.getHeader("set-cookie"));
+      const isCacheable = !isStreaming && (isStatic || (!isExplicitPrivate && !hasSetCookie)) && res.statusCode === 200 && rawBody.length < 3000000;
 
-      if (!isStreaming && !isPrivate && res.statusCode === 200 && rawBody.length < 3000000) {
+      if (isCacheable) {
         const minified = minifier.minify(rawBody, contentType);
         const entry = cache.set(key, path, 200, {}, minified, contentType);
         if (!res.headersSent) res.setHeader("ETag", entry.etag);
+      } else if (options.compressDynamic && !isStreaming && res.statusCode === 200 && !res.getHeader("content-encoding")) {
+        const { data, encoding } = compressor.compress(rawBody, contentType, req.headers["accept-encoding"]);
+        if (encoding) {
+          if (!res.headersSent) {
+            res.setHeader("Content-Encoding", encoding);
+            res.setHeader("Content-Length", data.length);
+          }
+          return originalEnd.apply(res, [data, ...args]);
+        }
       }
 
       if (!res.headersSent) {
