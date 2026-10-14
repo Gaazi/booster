@@ -86,6 +86,7 @@ function booster(options = {}) {
       if (chunk) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
       const rawBody = Buffer.concat(chunks);
       const contentType = (res.getHeader("content-type") || "text/plain").toString();
+      const cacheControl = (res.getHeader("cache-control") || "").toString().toLowerCase();
       const isExplicitPrivate = cacheControl.includes("private") || cacheControl.includes("no-store");
       const hasSetCookie = Boolean(res.getHeader("set-cookie"));
       const isCacheable = !isStreaming && (isStatic || (!isExplicitPrivate && !hasSetCookie)) && res.statusCode === 200 && rawBody.length < 3000000;
