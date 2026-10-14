@@ -3,13 +3,13 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "go_fast"
+name = "booster"
 version = "1.0.0"
 description = "Universal Ultra-Fast Rocket Speed Caching, Compression, and Minification Engine for Python and Web Apps."
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [
-    { name = "go_fast team" }
+    { name = "booster team" }
 ]
 dependencies = [
     "fastapi>=0.143.1,<1",
@@ -20,10 +20,12 @@ dependencies = [
 ]
 
 [project.scripts]
-go-fast = "go_fast.server:main"
+booster = "booster.server:main"
+go-fast = "booster.server:main"
 
 [tool.setuptools.packages.find]
-include = ["go_fast*"]
+include = ["booster*", "go_fast*"]
 
 [tool.setuptools.package-data]
+booster = ["dashboard/*.html", "dashboard/*.css", "dashboard/*.js"]
 go_fast = ["dashboard/*.html", "dashboard/*.css", "dashboard/*.js"]
