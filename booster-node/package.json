@@ -3,24 +3,41 @@
   "version": "1.0.0",
   "description": "Zero-dependency ultra-fast caching, minification, and compression booster for Express, Next.js, Fastify, and Node.js.",
   "main": "src/index.js",
+  "types": "./types/index.d.ts",
   "exports": {
-    ".": "./src/index.js",
-    "./cache": "./src/cache.js",
-    "./compressor": "./src/compressor.js",
-    "./minifier": "./src/minifier.js"
+    ".": {
+      "types": "./types/index.d.ts",
+      "default": "./src/index.js"
+    },
+    "./cache": {
+      "types": "./types/cache.d.ts",
+      "default": "./src/cache.js"
+    },
+    "./compressor": {
+      "types": "./types/compressor.d.ts",
+      "default": "./src/compressor.js"
+    },
+    "./minifier": {
+      "types": "./types/minifier.d.ts",
+      "default": "./src/minifier.js"
+    }
   },
   "files": [
     "src",
+    "types",
     "README.md",
     "LICENSE"
   ],
+
   "engines": {
     "node": ">=18.0.0"
   },
   "scripts": {
-    "test": "node --test test/test.js",
+    "test": "node --test test/test.js && node --test test/test-ts.ts",
+    "test:ts": "node --test test/test-ts.ts",
     "start": "node src/index.js"
   },
+
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Gaazi/booster.git",
