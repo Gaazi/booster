@@ -60,6 +60,21 @@ varying responses and already encoded payloads bypass shared storage.
 advertise private responses as public to a CDN. Leave it off for pages carrying
 secrets and when another layer already owns compression.
 
+## Embed in the owner's existing dashboard
+
+Use `engine.get_status()` for the shared version, configuration, cache memory
+and processed-response counters. It exposes no cache keys, payloads or request
+logs. The host website must authorize an administrator before reading this
+snapshot or calling `engine.cache.clear()`. Keep both actions under its existing
+owner dashboard, and apply the host's private/no-store and CSRF/origin policies.
+Do not mount the standalone dashboard or proxy on the public website.
+
+Counters describe responses processed by Booster, not browser page-load times.
+Resident memory includes entries awaiting lazy expiry. With external compression
+disabled in Booster, its bandwidth-savings counter is not the host GZip savings.
+Cache clearing retains lifetime counters. A multi-worker dashboard samples only
+the serving process; it is not a fleet-wide cache purge or aggregate report.
+
 ## Correctness and operational limits
 
 - Origin static max-age/s-maxage bounds the configured RAM TTL. Cache hits report

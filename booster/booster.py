@@ -143,3 +143,22 @@ class RocketBooster:
                                      send: Callable, path: str, req_headers: dict[str, str]) -> None:
         """Optimize a bounded response while respecting ASGI streaming semantics."""
         await self.app(scope, receive, ASGIResponseOptimizer(self, scope, send))
+
+    def get_status(self) -> dict[str, Any]:
+        """Return a host-dashboard snapshot without credentials, URLs or payloads."""
+        from booster import __version__
+        metrics = self.telemetry.get_stats()
+        metrics.pop("recent_logs", None)
+        return {
+            "active": True, "version": __version__, "cache": self.cache.get_stats(),
+            "metrics": metrics,
+            "configuration": {
+                "cache_ttl_seconds": self.cache.default_ttl,
+                "include_paths": self.cache_policy.include_paths,
+                "exclude_paths": self.cache_policy.exclude_paths,
+                "compression": self.enable_compression,
+                "minification": self.enable_minification,
+                "dynamic_compression": self.compress_dynamic,
+                "surgical_invalidation": self.surgical_invalidation,
+            },
+        }

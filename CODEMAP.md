@@ -30,6 +30,7 @@ Generated with `python refresh_docs.py`.
 - `_send_304` (line 125): Retain origin cache and security headers on conditional cache hits.
 - `_send_cached` (line 134): Send cached content with validators matching the transformed bytes.
 - `_passthrough_and_cache` (line 142): Optimize a bounded response while respecting ASGI streaming semantics.
+- `get_status` (line 147): Return a host-dashboard snapshot without credentials, URLs or payloads.
 
 ## booster/cache.py
 
@@ -50,6 +51,7 @@ Generated with `python refresh_docs.py`.
 - `invalidate_path_prefix` (line 139): Invalidate all cached items whose original path starts with prefix.
 - `clear` (line 148): Clear all cached entries.
 - `count` (line 156): Return count of active entries.
+- `get_stats` (line 161): Expose bounded resident memory counters without cache keys or payloads.
 
 ## booster/cache_policy.py
 
