@@ -16,6 +16,14 @@ the operator explicitly opts in. Full integration guidance is in
 
 ## Next work, in priority order
 
+Primary product priority: the personalized invitation delivered to a guest must
+open quickly while retaining its full styles, music and animations. Prefer
+improving asset delivery and measured server work over dashboard refinements.
+Never use shared caching of personalized card HTML or remove visual features to
+claim speed. Invite's consuming integration is on dev at `a7aa413`; its short
+agent reference and `docs/10-booster-verification.md` document the actual adapter
+and local measurements. Live/physical-phone performance is still unverified.
+
 1. **Consuming website:** pin the reviewed Booster commit, select only public
    asset routes, retain outer security/host/CORS middleware and one compression
    owner. Test private pages, ranges, signed uploads, cache hits and decoded bytes.
@@ -25,6 +33,7 @@ the operator explicitly opts in. Full integration guidance is in
    public APIs. Verify that core attachment installs and imports without FastAPI,
    Uvicorn or HTTPX when the host supplies its ASGI framework. Test standalone
    installation separately; do not merely remove dependencies required on import.
+   Per-host `max_cache_bytes` is already available; Invite uses an 8 MiB cap.
 3. **Node parity:** independently audit Node cache admission, encoded bodies,
    credential/range bypass, Vary and TTL semantics against the Python privacy
    regressions. Current Node tests pass, but passing seven tests is not a full

@@ -1,12 +1,12 @@
 # Project State
-Updated: 2026-10-15 00:12
+Updated: 2026-10-15 00:20
 ## Done
-- Booster-only engine and private host-dashboard API committed/pushed on dev; recorded latest full verification: 144 Python tests and prior 7 Node tests passed.
-- Added max_cache_bytes so each website can choose a smaller RAM budget; oversized entries remain uncached. Recorded budget safety regressions and syntax/function audit passed.
-- Invite integration uses the owner dashboard module and public asset caching; personalized guest responses remain private and animations are preserved.
-- Reviewed roadmap and HTTP guidance: prioritize optional server dependencies, measured performance and tested framework adapters. No engine changes or tests run in this advisory task.
+- Unified Booster-only Python engine/command/dashboard; private cache safeguards, route policy, shared owner-status API and configurable byte budget committed/pushed on dev. Invite pins engine revision a116e31.
+- Final Python suite: 146 passed. Prior unchanged Node suite: 7 passed. Relevant syntax/function-size audits, pip check, source map and diff checks passed.
+- Invite integration completed/pushed on dev at a7aa413: owner-only module in existing dashboard, 8 MiB asset cache, 358 tests, browser 360px/1000px checks and privacy regressions passed.
+- Prioritized handoff now states that personalized guest-card loading comes first, without skipping styles/music/animations or shared-caching private card HTML.
 ## Pending
-- Optional server dependencies, independent Node policy parity audit, multi-worker coordination and real-phone/production benchmarks remain in docs/NEXT_STEPS.md.
-- Invite user report includes 352 passing tests and local warm-asset timings; final visual checks and completion were not independently verified in this advisory task.
+- Optional server/dashboard dependencies, independent Node policy parity review and coordinated multi-worker invalidation remain follow-ups.
+- Production and physical-phone/network validation, plus Go/Rust phases, remain pending; no demo/main promotion or production change performed.
 ## Next Step
-- Pin configurable-memory revision a116e31 in Invite, set its budget to 8 MiB and finish final verification on dev; then implement optional server dependencies.
+- Prioritize real-phone personalized-card measurements, then implement optional core/server packaging with import/install regressions on dev.
