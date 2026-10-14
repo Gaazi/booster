@@ -79,5 +79,7 @@ def representation_headers(original: list[tuple[bytes, bytes]], body: bytes,
         headers.append((b"etag", etag.encode("ascii")))
     if encoding:
         headers.append((b"content-encoding", encoding.encode("ascii")))
-    headers.append((b"x-powered-by", b"go_fast RocketBooster"))
+    headers.append((b"cdn-cache-control", b"public, max-age=300, stale-while-revalidate=60"))
+    headers.append((b"surrogate-control", b"max-age=300"))
+    headers.append((b"x-powered-by", b"booster"))
     return headers

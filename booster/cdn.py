@@ -9,12 +9,38 @@ import httpx
 logger = logging.getLogger("booster.cdn")
 
 
+import os
+
+
 @dataclass
 class CDNConfig:
     """Configuration for CDN automated cache synchronization."""
     provider: str = "none"  # "cloudflare", "bunny", "fastly", "none"
     api_token: str = ""
     zone_id: str = ""
+
+    @classmethod
+    def from_env(cls) -> "CDNConfig":
+        """Auto-detect CDN credentials from environment variables."""
+        if os.getenv("CLOUDFLARE_ZONE_ID") and os.getenv("CLOUDFLARE_API_TOKEN"):
+            return cls(
+                provider="cloudflare",
+                api_token=os.environ["CLOUDFLARE_API_TOKEN"],
+                zone_id=os.environ["CLOUDFLARE_ZONE_ID"],
+            )
+        if os.getenv("BUNNY_ACCESS_KEY") and os.getenv("BUNNY_PULL_ZONE_ID"):
+            return cls(
+                provider="bunny",
+                api_token=os.environ["BUNNY_ACCESS_KEY"],
+                zone_id=os.environ["BUNNY_PULL_ZONE_ID"],
+            )
+        if os.getenv("FASTLY_KEY") and os.getenv("FASTLY_SERVICE_ID"):
+            return cls(
+                provider="fastly",
+                api_token=os.environ["FASTLY_KEY"],
+                zone_id=os.environ["FASTLY_SERVICE_ID"],
+            )
+        return cls(provider="none")
 
 
 class CDNManager:

@@ -18,6 +18,7 @@ from fastapi.staticfiles import StaticFiles
 
 from booster.proxy import SpeedProxyServer
 from booster.local_security import LocalAccessGuard
+from booster.cdn import CDNConfig, CDNManager
 
 @asynccontextmanager
 async def lifespan(application: FastAPI) -> AsyncIterator[None]:
@@ -73,6 +74,8 @@ async def clear_cache() -> JSONResponse:
     """Flush in-memory cache and reset telemetry."""
     proxy.cache.clear()
     proxy.telemetry.reset()
+    cdn = CDNManager(CDNConfig.from_env())
+    asyncio.create_task(cdn.purge_all())
     return JSONResponse({"status": "cleared"})
 
 
