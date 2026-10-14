@@ -77,3 +77,13 @@ MIDDLEWARE = [
 ```bash
 python -m pytest tests/
 ```
+
+
+### Reliability and verification
+
+Run `python -m pytest -q` for regression coverage. Run `python refresh_docs.py`
+to regenerate `CODEMAP.md` and the ignored browsable `docs/index.html`.
+Shared caches bypass authenticated/cookie requests, private responses, custom
+Vary fields, and explicit cache directives. ASGI streaming responses pass through.
+Compression respects quality values and reuses up to 64 small payload variants.
+The dashboard gateway is intended for local development and binds to loopback.

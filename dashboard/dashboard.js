@@ -1,5 +1,11 @@
 // Dashboard interaction script for go_fast
 
+function escapeHtml(value) {
+  const element = document.createElement("span");
+  element.textContent = String(value);
+  return element.innerHTML;
+}
+
 function formatBytes(bytes) {
   if (bytes === 0) return "0 B";
   const k = 1024;
@@ -25,16 +31,18 @@ async function fetchStats() {
     if (data.recent_logs && data.recent_logs.length > 0) {
       tbody.innerHTML = data.recent_logs.map(log => `
         <tr>
-          <td>${log.time}</td>
-          <td><b>${log.method}</b></td>
-          <td style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${log.path}</td>
+          <td>${escapeHtml(log.time)}</td>
+          <td><b>${escapeHtml(log.method)}</b></td>
+          <td style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(log.path)}</td>
           <td><span style="color: ${log.status_code < 400 ? 'var(--green)' : '#f87171'}">${log.status_code}</span></td>
           <td style="color: var(--accent); font-weight: bold;">${log.duration_ms} ms</td>
           <td><span class="badge ${log.cached ? 'badge-hit' : 'badge-miss'}">${log.cached ? '⚡ HIT' : 'MISS'}</span></td>
           <td>${formatBytes(log.size_bytes)}</td>
-          <td>${log.compression}</td>
+          <td>${escapeHtml(log.compression)}</td>
         </tr>
       `).join("");
+    } else {
+      tbody.replaceChildren();
     }
   } catch (err) {
     console.error("Failed to fetch stats:", err);
@@ -51,6 +59,7 @@ async function applyTarget() {
       body: JSON.stringify({ url: url })
     });
     const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Update failed");
     alert("🚀 Speed Accelerator is now boosting: " + data.target_url);
     fetchStats();
   } catch (err) {
@@ -59,7 +68,7 @@ async function applyTarget() {
 }
 
 async function autoDetect() {
-  const btn = event.target;
+  const btn = document.querySelector('[onclick="autoDetect()"]');
   btn.textContent = "Scanning ports...";
   try {
     const res = await fetch("/api/detect-local");

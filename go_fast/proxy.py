@@ -8,6 +8,7 @@ import httpx
 from starlette.requests import Request
 from starlette.responses import Response
 
+from go_fast.http_policy import HOP_HEADERS, request_cacheable, response_cacheable, merge_vary
 from go_fast.cache import FastMemoryCache
 from go_fast.compressor import ResponseCompressor
 from go_fast.minifier import FastMinifier
@@ -30,7 +31,7 @@ class SpeedProxyServer:
     def get_client(self) -> httpx.AsyncClient:
         """Return pooled async HTTP client for connection reuse."""
         if self._client is None or self._client.is_closed:
-            self._client = httpx.AsyncClient(timeout=30.0, follow_redirects=True)
+            self._client = httpx.AsyncClient(timeout=30.0, follow_redirects=False)
         return self._client
 
     def set_target(self, new_url: str) -> None:
@@ -42,13 +43,15 @@ class SpeedProxyServer:
         """Intercept, cache, optimize, and proxy incoming client request."""
         method = request.method.upper()
         path = request.url.path
+        if path.startswith("/site/"):
+            path = path[5:]
         query = request.url.query.encode("latin1")
 
         if method in ("POST", "PUT", "DELETE", "PATCH"):
             self.cache.invalidate_path_prefix(path)
-            return await self._proxy_upstream(request, path)
+            return await self._fetch_and_cache(request, path, query)
 
-        if method == "GET":
+        if method == "GET" and request_cacheable(dict(request.headers)):
             cached_resp = self._check_cache(request, path, query)
             if cached_resp is not None:
                 return cached_resp
@@ -57,7 +60,7 @@ class SpeedProxyServer:
 
     def _check_cache(self, request: Request, path: str, query: bytes) -> Optional[Response]:
         """Check cache and return 304 or cached content if valid."""
-        cache_key = self.cache.make_key("GET", path, query)
+        cache_key = self.cache.make_key("GET:" + request.headers.get("host", ""), path, query)
         cached = self.cache.get(cache_key)
         if not cached:
             return None
@@ -73,15 +76,17 @@ class SpeedProxyServer:
         body, encoding = self.compressor.compress(
             cached.body, cached.content_type, request.headers.get("accept-encoding", "")
         )
-        headers = {
+        headers = {k.decode("latin1"): v.decode("latin1") for k, v in cached.headers}
+        headers.update({
             "Content-Type": cached.content_type,
             "ETag": cached.etag,
-            "Cache-Control": "public, max-age=120",
             "X-Accelerated-By": "go_fast Rocket Proxy",
-        }
+        })
+        headers.pop("etag", None)
+        headers["vary"] = merge_vary(headers.get("vary", ""))
         if encoding:
             headers["Content-Encoding"] = encoding
-            headers["Vary"] = "Accept-Encoding"
+            headers["vary"] = merge_vary(headers.get("vary", ""))
 
         duration = (time.perf_counter() - start_time) * 1000
         self.telemetry.record_request(
@@ -98,47 +103,53 @@ class SpeedProxyServer:
         client = self.get_client()
         start = time.perf_counter()
         try:
-            res = await client.request(
-                method=request.method,
-                url=upstream_url,
-                headers=dict(request.headers),
+            outgoing = client.build_request(
+                request.method, upstream_url,
+                headers={k: v for k, v in request.headers.items() if k.lower() not in HOP_HEADERS},
                 content=await request.body(),
             )
-        except Exception as exc:
+            outgoing.headers.pop("cookie", None)
+            if "cookie" in request.headers:
+                outgoing.headers["cookie"] = request.headers["cookie"]
+            res = await client.send(outgoing)
+        except httpx.RequestError as exc:
             logger.error("Upstream connection error: %s", exc)
-            return Response(f"go_fast Proxy Gateway Error: {exc}", status_code=502)
+            return Response("Upstream server unavailable", status_code=502)
 
         upstream_duration = (time.perf_counter() - start) * 1000
         raw_body = res.content
         content_type = res.headers.get("content-type", "text/plain")
 
-        processed = self.minifier.minify(raw_body, content_type)
-        if res.status_code == 200 and request.method == "GET" and len(processed) < 3_000_000:
-            key = self.cache.make_key("GET", path, query)
-            self.cache.set(key, path, res.status_code, [], processed, content_type)
+        transform = res.status_code == 200 and "no-transform" not in res.headers.get("cache-control", "")
+        processed = self.minifier.minify(raw_body, content_type) if transform else raw_body
+        if (res.status_code == 200 and request.method == "GET" and len(processed) < 3_000_000
+                and request_cacheable(dict(request.headers)) and response_cacheable(dict(res.headers))):
+            key = self.cache.make_key("GET:" + request.headers.get("host", ""), path, query)
+            self.cache.set(key, path, res.status_code,
+                           [(k.encode("latin1"), v.encode("latin1")) for k, v in res.headers.multi_items()
+                            if k.lower() not in HOP_HEADERS | {"content-length", "content-encoding"}],
+                           processed, content_type)
 
-        compressed, encoding = self.compressor.compress(
+        compressed, encoding = (self.compressor.compress(
             processed, content_type, request.headers.get("accept-encoding", "")
-        )
-        out_headers = {k: v for k, v in res.headers.items() if k.lower() not in ("content-length", "content-encoding")}
+        ) if transform else (processed, None))
+        out_headers = {k: v for k, v in res.headers.items() if k.lower() not in HOP_HEADERS | {"content-length", "content-encoding"}}
         out_headers["X-Accelerated-By"] = "go_fast Rocket Proxy"
+        out_headers["vary"] = merge_vary(out_headers.get("vary", ""))
         if encoding:
             out_headers["Content-Encoding"] = encoding
-            out_headers["Vary"] = "Accept-Encoding"
+            out_headers["vary"] = merge_vary(out_headers.get("vary", ""))
 
         self.telemetry.record_request(
             request.method, path, res.status_code, upstream_duration, False, len(raw_body), len(compressed), encoding or "none"
         )
-        return Response(content=compressed, status_code=res.status_code, headers=out_headers)
+        response = Response(content=compressed, status_code=res.status_code, headers=out_headers)
+        response.raw_headers = [(k, v) for k, v in response.raw_headers if k != b"set-cookie"]
+        response.raw_headers.extend((b"set-cookie", value.encode("latin1"))
+                                    for value in res.headers.get_list("set-cookie"))
+        return response
 
-    async def _proxy_upstream(self, request: Request, path: str) -> Response:
-        """Direct passthrough for write mutations."""
-        client = self.get_client()
-        upstream_url = f"{self.target_url}{path}"
-        res = await client.request(
-            method=request.method,
-            url=upstream_url,
-            headers=dict(request.headers),
-            content=await request.body(),
-        )
-        return Response(content=res.content, status_code=res.status_code, headers=dict(res.headers))
+    async def close(self) -> None:
+        """Release upstream pooled connections on shutdown."""
+        if self._client is not None:
+            await self._client.aclose()

@@ -2,9 +2,21 @@
 
 import hashlib
 import time
+from functools import wraps
+from threading import RLock
 from collections import OrderedDict
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
+
+
+def synchronized(method):
+    """Serialize cache operations across worker threads."""
+    @wraps(method)
+    def guarded(self, *args, **kwargs):
+        """Hold the cache lock for the complete operation."""
+        with self._lock:
+            return method(self, *args, **kwargs)
+    return guarded
 
 
 @dataclass
@@ -21,13 +33,16 @@ class CacheEntry:
     @property
     def is_expired(self) -> bool:
         """Check if entry has outlived its time to live."""
-        return (time.time() - self.created_at) > self.ttl
+        return (time.monotonic() - self.created_at) > self.ttl
 
 
 class FastMemoryCache:
     """Thread-safe LRU in-memory cache supporting TTL and key invalidation."""
 
     def __init__(self, max_items: int = 1000, default_ttl: float = 300.0) -> None:
+        if max_items < 1:
+            raise ValueError("max_items must be positive")
+        self._lock = RLock()
         self.max_items = max_items
         self.default_ttl = default_ttl
         self._store: OrderedDict[str, CacheEntry] = OrderedDict()
@@ -44,6 +59,7 @@ class FastMemoryCache:
         raw = f"{method}:{path}:{query.decode('latin1', 'ignore')}"
         return hashlib.blake2b(raw.encode("utf-8"), digest_size=16).hexdigest()
 
+    @synchronized
     def get(self, key: str) -> Optional[CacheEntry]:
         """Retrieve entry by key if valid and not expired."""
         entry = self._store.get(key)
@@ -55,6 +71,7 @@ class FastMemoryCache:
         self._store.move_to_end(key)
         return entry
 
+    @synchronized
     def set(
         self,
         key: str,
@@ -72,11 +89,11 @@ class FastMemoryCache:
 
         entry = CacheEntry(
             status_code=status_code,
-            headers=headers,
+            headers=list(headers),
             body=body,
             etag=self.compute_etag(body),
             content_type=content_type,
-            created_at=time.time(),
+            created_at=time.monotonic(),
             ttl=ttl if ttl is not None else self.default_ttl,
         )
         self._store[key] = entry
@@ -84,6 +101,7 @@ class FastMemoryCache:
         self._url_index[key] = path
         return entry
 
+    @synchronized
     def delete(self, key: str) -> bool:
         """Remove single entry by key."""
         if key in self._store:
@@ -92,6 +110,7 @@ class FastMemoryCache:
             return True
         return False
 
+    @synchronized
     def invalidate_path_prefix(self, prefix: str) -> int:
         """Invalidate all cached items whose original path starts with prefix."""
         to_remove = [k for k, p in self._url_index.items() if p.startswith(prefix)]
@@ -99,11 +118,13 @@ class FastMemoryCache:
             self.delete(k)
         return len(to_remove)
 
+    @synchronized
     def clear(self) -> None:
         """Clear all cached entries."""
         self._store.clear()
         self._url_index.clear()
 
+    @synchronized
     def count(self) -> int:
         """Return count of active entries."""
         return len(self._store)

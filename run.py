@@ -4,6 +4,9 @@ import asyncio
 import os
 import socket
 import webbrowser
+from contextlib import asynccontextmanager
+from threading import Timer
+from urllib.parse import urlsplit
 from pathlib import Path
 from typing import Any, Dict
 
@@ -14,7 +17,14 @@ from fastapi.staticfiles import StaticFiles
 
 from go_fast.proxy import SpeedProxyServer
 
-app = FastAPI(title="go_fast Accelerator", docs_url=None, redoc_url=None)
+@asynccontextmanager
+async def lifespan(application: FastAPI):
+    """Close pooled upstream connections when the gateway stops."""
+    yield
+    await proxy.close()
+
+
+app = FastAPI(title="go_fast Accelerator", docs_url=None, redoc_url=None, lifespan=lifespan)
 proxy = SpeedProxyServer(target_url="http://127.0.0.1:8000")
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -46,6 +56,9 @@ async def set_target(payload: Dict[str, str]) -> JSONResponse:
     url = payload.get("url", "").strip()
     if not url:
         return JSONResponse({"error": "URL cannot be empty"}, status_code=400)
+    parsed = urlsplit(url)
+    if parsed.scheme not in ("http", "https") or not parsed.hostname or parsed.query or parsed.fragment:
+        return JSONResponse({"error": "Enter an HTTP or HTTPS base URL"}, status_code=400)
     proxy.set_target(url)
     return JSONResponse({"status": "ok", "target_url": proxy.target_url})
 
@@ -70,8 +83,9 @@ async def detect_local() -> JSONResponse:
     """Scan common development ports for running applications."""
     common_ports = [8000, 3000, 8080, 5000, 4200, 8001]
     found_url = None
-    for port in common_ports:
-        if is_port_open(port):
+    results = await asyncio.gather(*(asyncio.to_thread(is_port_open, port) for port in common_ports))
+    for port, available in zip(common_ports, results):
+        if available:
             found_url = f"http://127.0.0.1:{port}"
             break
     return JSONResponse({"found_url": found_url})
@@ -88,11 +102,16 @@ def launch_browser() -> None:
     webbrowser.open("http://127.0.0.1:5050")
 
 
-if __name__ == "__main__":
-    asyncio.get_event_loop().call_later(1.0, launch_browser)
+def main() -> None:
+    """Launch the local dashboard and acceleration gateway."""
+    Timer(1.0, launch_browser).start()
     print("\n" + "=" * 60)
     print("🚀 go_fast Rocket Speed Accelerator is launching!")
     print("👉 Dashboard: http://127.0.0.1:5050")
     print("👉 Accelerated Gateway: http://127.0.0.1:5050/site/")
     print("=" * 60 + "\n")
     uvicorn.run(app, host="127.0.0.1", port=5050, log_level="warning")
+
+
+if __name__ == "__main__":
+    main()

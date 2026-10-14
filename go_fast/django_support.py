@@ -3,6 +3,7 @@
 import time
 from typing import Any, Callable
 
+from go_fast.http_policy import request_cacheable, response_cacheable
 from go_fast.cache import FastMemoryCache
 from go_fast.compressor import ResponseCompressor
 from go_fast.minifier import FastMinifier
@@ -28,13 +29,16 @@ class DjangoRocketMiddleware:
             self.cache.invalidate_path_prefix(path)
             return self.get_response(request)
 
-        if method == "GET":
+        headers = {k.lower(): v for k, v in request.headers.items()}
+        if method == "GET" and request_cacheable(headers):
             query = getattr(request, "META", {}).get("QUERY_STRING", "").encode("latin1")
-            cache_key = self.cache.make_key("GET", path, query)
+            cache_key = self.cache.make_key("GET:" + headers.get("host", ""), path, query)
             cached = self.cache.get(cache_key)
             if cached:
                 from django.http import HttpResponse  # type: ignore
                 response = HttpResponse(cached.body, status=cached.status_code, content_type=cached.content_type)
+                for name, value in cached.headers:
+                    response[name.decode("latin1")] = value.decode("latin1")
                 response["ETag"] = cached.etag
                 response["X-Powered-By"] = "go_fast RocketBooster"
                 return response
@@ -44,10 +48,13 @@ class DjangoRocketMiddleware:
         duration = (time.perf_counter() - start_time) * 1000
 
         content_type = response.get("Content-Type", "text/html")
-        if response.status_code == 200 and method == "GET" and hasattr(response, "content"):
+        if (response.status_code == 200 and method == "GET" and not response.streaming
+                and request_cacheable(headers) and not response.cookies
+                and response_cacheable({k.lower(): v for k, v in response.items()})):
             minified = self.minifier.minify(response.content, content_type)
-            key = self.cache.make_key("GET", path)
-            self.cache.set(key, path, 200, [], minified, content_type)
+            key = self.cache.make_key("GET:" + headers.get("host", ""), path, request.META.get("QUERY_STRING", "").encode("latin1"))
+            self.cache.set(key, path, 200, [(k.encode("latin1"), v.encode("latin1"))
+                                           for k, v in response.items()], minified, content_type)
             response.content = minified
             response["X-Powered-By"] = "go_fast RocketBooster"
 
