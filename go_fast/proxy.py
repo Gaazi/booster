@@ -1,152 +1,149 @@
-"""Universal high-speed Reverse Proxy and Caching Accelerator."""
+"""Loopback reverse proxy with bounded transport and public response caching."""
 
+import asyncio
 import logging
 import time
-from typing import Any, Callable, Dict, Optional, Tuple
+from http.cookiejar import CookieJar, DefaultCookiePolicy
+from typing import Any
 
 import httpx
 from starlette.requests import Request
 from starlette.responses import Response
 
-from go_fast.http_policy import HOP_HEADERS, request_cacheable, response_cacheable, merge_vary
+from go_fast.asgi_response import parse_headers, representation_headers
+from go_fast.http_policy import filtered_headers, request_cacheable, response_cacheable
 from go_fast.cache import FastMemoryCache
 from go_fast.compressor import ResponseCompressor
 from go_fast.minifier import FastMinifier
 from go_fast.telemetry import TelemetryTracker
+from go_fast.local_security import validate_target
+from go_fast.proxy_transport import BodyTooLarge, outgoing_headers, request_body, upstream_body
 
 logger = logging.getLogger("go_fast.proxy")
 
 
+class RejectCookies(DefaultCookiePolicy):
+    """Never retain upstream credentials in a shared connection pool."""
+
+    def set_ok(self, cookie: Any, request: Any) -> bool:
+        """Reject every upstream cookie; clients manage their own cookie state."""
+        return False
+
+
 class SpeedProxyServer:
-    """Universal reverse proxy that accelerates any target web server."""
+    """Accelerate public origin responses without retaining personalized bodies."""
 
     def __init__(self, target_url: str = "http://127.0.0.1:8000") -> None:
-        self.target_url = target_url.rstrip("/")
+        """Initialize a trusted target and resource limits."""
+        self.target_url = validate_target(target_url)
         self.cache = FastMemoryCache(max_items=2000, default_ttl=300.0)
         self.compressor = ResponseCompressor(min_size=256)
         self.minifier = FastMinifier()
         self.telemetry = TelemetryTracker()
-        self._client: Optional[httpx.AsyncClient] = None
+        self._client: httpx.AsyncClient | None = None
+        self._requests = asyncio.Semaphore(16)
 
     def get_client(self) -> httpx.AsyncClient:
-        """Return pooled async HTTP client for connection reuse."""
+        """Reuse connections without environment proxies or a shared cookie jar."""
         if self._client is None or self._client.is_closed:
-            self._client = httpx.AsyncClient(timeout=30.0, follow_redirects=False)
+            self._client = httpx.AsyncClient(timeout=30.0, follow_redirects=False, trust_env=False,
+                                             cookies=CookieJar(policy=RejectCookies()),
+                                             limits=httpx.Limits(max_connections=32,
+                                                                 max_keepalive_connections=16))
         return self._client
 
     def set_target(self, new_url: str) -> None:
-        """Update upstream target URL and reset cache."""
-        self.target_url = new_url.rstrip("/")
+        """Validate a new origin and invalidate pending and stored representations."""
+        self.target_url = validate_target(new_url)
         self.cache.clear()
+        self.telemetry.reset()
+
+    def _key(self, request: Request, path: str, query: bytes) -> str:
+        """Keep scheme, host and encoded path representations separate."""
+        authority = request.scope.get("scheme", "http") + ":" + request.headers.get("host", "")
+        raw_path = request.scope.get("raw_path", path.encode("utf-8")).decode("latin1")
+        return self.cache.make_key("GET:" + authority, raw_path, query)
 
     async def handle_request(self, request: Request) -> Response:
-        """Intercept, cache, optimize, and proxy incoming client request."""
-        method = request.method.upper()
-        path = request.url.path
-        if path.startswith("/site/"):
-            path = path[5:]
-        query = request.url.query.encode("latin1")
+        """Route requests and invalidate all derived reads around mutations."""
+        path = request.scope.get("path", "/")
+        path = path[5:] if path.startswith("/site/") else path
+        query = request.scope.get("query_string", b"")
+        mutation = request.method in {"POST", "PUT", "DELETE", "PATCH"}
+        if mutation:
+            self.cache.clear()
+        try:
+            if request.method == "GET" and request_cacheable(parse_headers(request.scope.get("headers", []))):
+                response = self._check_cache(request, path, query)
+                if response is not None:
+                    return response
+            async with self._requests:
+                return await self._fetch_and_cache(request, path, query)
+        finally:
+            if mutation:
+                self.cache.clear()
 
-        if method in ("POST", "PUT", "DELETE", "PATCH"):
-            self.cache.invalidate_path_prefix(path)
-            return await self._fetch_and_cache(request, path, query)
-
-        if method == "GET" and request_cacheable(dict(request.headers)):
-            cached_resp = self._check_cache(request, path, query)
-            if cached_resp is not None:
-                return cached_resp
-
-        return await self._fetch_and_cache(request, path, query)
-
-    def _check_cache(self, request: Request, path: str, query: bytes) -> Optional[Response]:
-        """Check cache and return 304 or cached content if valid."""
-        cache_key = self.cache.make_key("GET:" + request.headers.get("host", ""), path, query)
-        cached = self.cache.get(cache_key)
-        if not cached:
+    def _check_cache(self, request: Request, path: str, query: bytes) -> Response | None:
+        """Serve a public representation with the same validators on miss and hit."""
+        cached = self.cache.get(self._key(request, path, query))
+        if cached is None:
             return None
-
-        start_time = time.perf_counter()
         if request.headers.get("if-none-match") == cached.etag:
-            duration = (time.perf_counter() - start_time) * 1000
-            self.telemetry.record_request(
-                "GET", path, 304, duration, True, len(cached.body), 0, "none", 120.0
-            )
-            return Response(status_code=304, headers={"ETag": cached.etag})
-
-        body, encoding = self.compressor.compress(
-            cached.body, cached.content_type, request.headers.get("accept-encoding", "")
-        )
-        headers = {k.decode("latin1"): v.decode("latin1") for k, v in cached.headers}
-        headers.update({
-            "Content-Type": cached.content_type,
-            "ETag": cached.etag,
-            "X-Accelerated-By": "go_fast Rocket Proxy",
-        })
-        headers.pop("etag", None)
-        headers["vary"] = merge_vary(headers.get("vary", ""))
-        if encoding:
-            headers["Content-Encoding"] = encoding
-            headers["vary"] = merge_vary(headers.get("vary", ""))
-
-        duration = (time.perf_counter() - start_time) * 1000
-        self.telemetry.record_request(
-            "GET", path, cached.status_code, duration, True, len(cached.body), len(body), encoding or "none", 100.0
-        )
-        return Response(content=body, status_code=cached.status_code, headers=headers)
+            return Response(status_code=304, headers={"etag": cached.etag, "vary": "Accept-Encoding",
+                                                      "cache-control": "public"})
+        body, encoding = self.compressor.compress(cached.body, cached.content_type,
+                                                  request.headers.get("accept-encoding", ""))
+        response = Response(body, status_code=cached.status_code)
+        response.raw_headers = representation_headers(cached.headers, body, cached.etag, encoding)
+        self.telemetry.record_request("GET", "[redacted]", cached.status_code, 0, True,
+                                     len(cached.body), len(body), encoding or "none")
+        return response
 
     async def _fetch_and_cache(self, request: Request, path: str, query: bytes) -> Response:
-        """Fetch from origin server, minify, compress, and store in cache."""
-        upstream_url = f"{self.target_url}{path}"
-        if query:
-            upstream_url = f"{upstream_url}?{query.decode('latin1')}"
-
-        client = self.get_client()
+        """Fetch one raw origin response with upload and buffering limits."""
+        generation = self.cache.generation
+        raw_path = request.scope.get("raw_path", path.encode("utf-8")).decode("ascii")
+        raw_path = raw_path[5:] if raw_path.startswith("/site/") else raw_path
+        url = self.target_url + raw_path + ("?" + query.decode("ascii") if query else "")
         start = time.perf_counter()
         try:
-            outgoing = client.build_request(
-                request.method, upstream_url,
-                headers={k: v for k, v in request.headers.items() if k.lower() not in HOP_HEADERS},
-                content=await request.body(),
-            )
+            body = await request_body(request)
+            client = self.get_client()
+            outgoing = client.build_request(request.method, url, headers=outgoing_headers(request), content=body)
             outgoing.headers.pop("cookie", None)
             if "cookie" in request.headers:
                 outgoing.headers["cookie"] = request.headers["cookie"]
-            res = await client.send(outgoing)
+            upstream = await client.send(outgoing, stream=True)
+            payload = await upstream_body(upstream)
+        except BodyTooLarge:
+            return Response("Request too large", status_code=413)
         except httpx.RequestError as exc:
-            logger.error("Upstream connection error: %s", exc)
+            logger.warning("Upstream request failed (%s)", type(exc).__name__)
             return Response("Upstream server unavailable", status_code=502)
+        if isinstance(payload, Response):
+            return payload
+        result = self._prepare_response(request, upstream, payload, (path, query, generation))
+        self.telemetry.record_request(request.method, "[redacted]", upstream.status_code,
+                                     (time.perf_counter() - start) * 1000, False, len(payload), len(result.body))
+        return result
 
-        upstream_duration = (time.perf_counter() - start) * 1000
-        raw_body = res.content
-        content_type = res.headers.get("content-type", "text/plain")
-
-        transform = res.status_code == 200 and "no-transform" not in res.headers.get("cache-control", "")
-        processed = self.minifier.minify(raw_body, content_type) if transform else raw_body
-        if (res.status_code == 200 and request.method == "GET" and len(processed) < 3_000_000
-                and request_cacheable(dict(request.headers)) and response_cacheable(dict(res.headers))):
-            key = self.cache.make_key("GET:" + request.headers.get("host", ""), path, query)
-            self.cache.set(key, path, res.status_code,
-                           [(k.encode("latin1"), v.encode("latin1")) for k, v in res.headers.multi_items()
-                            if k.lower() not in HOP_HEADERS | {"content-length", "content-encoding"}],
-                           processed, content_type)
-
-        compressed, encoding = (self.compressor.compress(
-            processed, content_type, request.headers.get("accept-encoding", "")
-        ) if transform else (processed, None))
-        out_headers = {k: v for k, v in res.headers.items() if k.lower() not in HOP_HEADERS | {"content-length", "content-encoding"}}
-        out_headers["X-Accelerated-By"] = "go_fast Rocket Proxy"
-        out_headers["vary"] = merge_vary(out_headers.get("vary", ""))
-        if encoding:
-            out_headers["Content-Encoding"] = encoding
-            out_headers["vary"] = merge_vary(out_headers.get("vary", ""))
-
-        self.telemetry.record_request(
-            request.method, path, res.status_code, upstream_duration, False, len(raw_body), len(compressed), encoding or "none"
-        )
-        response = Response(content=compressed, status_code=res.status_code, headers=out_headers)
-        response.raw_headers = [(k, v) for k, v in response.raw_headers if k != b"set-cookie"]
-        response.raw_headers.extend((b"set-cookie", value.encode("latin1"))
-                                    for value in res.headers.get_list("set-cookie"))
+    def _prepare_response(self, request: Request, upstream: httpx.Response, body: bytes,
+                          context: tuple[str, bytes, int]) -> Response:
+        """Transform only explicitly public responses and preserve repeated headers."""
+        original = filtered_headers(list(upstream.headers.raw))
+        public = (request.method == "GET" and upstream.status_code == 200
+                  and request_cacheable(parse_headers(request.scope.get("headers", [])))
+                  and response_cacheable(parse_headers(original)))
+        if public:
+            content_type = upstream.headers.get("content-type", "text/plain")
+            body = self.minifier.minify(body, content_type)
+            path, query, generation = context
+            entry = self.cache.set_if_current(generation, self._key(request, path, query),
+                                               path, 200, original, body, content_type)
+            body, encoding = self.compressor.compress(body, content_type, request.headers.get("accept-encoding", ""))
+            original = representation_headers(original, body, entry.etag if entry else None, encoding)
+        response = Response(body, status_code=upstream.status_code)
+        response.raw_headers = original
         return response
 
     async def close(self) -> None:

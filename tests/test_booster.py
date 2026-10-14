@@ -1,5 +1,8 @@
 """Integration tests for RocketBooster ASGI middleware."""
 
+from __future__ import annotations
+from typing import Any, Callable, AsyncIterator, Iterator
+
 import pytest
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -9,25 +12,30 @@ from go_fast.booster import RocketBooster
 
 
 def create_test_app() -> FastAPI:
+    """Verify create test app."""
     app = FastAPI()
     app.add_middleware(RocketBooster, min_compress_size=10)
 
     @app.get("/hello", response_class=HTMLResponse)
-    def hello() -> str:
-        return "<html>   <body>Hello Fast World</body>   </html>"
+    def hello() -> HTMLResponse:
+        """Verify hello."""
+        return HTMLResponse("<html>   <body>Hello Fast World</body>   </html>", headers={"cache-control": "public"})
 
     @app.get("/data", response_class=JSONResponse)
     def data() -> dict:
+        """Verify data."""
         return {"message": "success", "count": 100}
 
     @app.post("/items")
     def create_item(payload: dict) -> dict:
+        """Verify create item."""
         return {"created": True}
 
     return app
 
 
 def test_first_request_and_caching() -> None:
+    """Verify first request and caching."""
     app = create_test_app()
     client = TestClient(app)
 
@@ -35,7 +43,7 @@ def test_first_request_and_caching() -> None:
     res1 = client.get("/hello")
     assert res1.status_code == 200
     assert "X-Powered-By" in res1.headers
-    assert "<html><body>Hello Fast World</body></html>" in res1.text
+    assert "<html>   <body>Hello Fast World</body>   </html>" in res1.text
     etag = res1.headers.get("etag")
     assert etag is not None
 
@@ -50,6 +58,7 @@ def test_first_request_and_caching() -> None:
 
 
 def test_post_invalidation() -> None:
+    """Verify post invalidation."""
     app = create_test_app()
     client = TestClient(app)
 

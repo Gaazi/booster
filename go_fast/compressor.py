@@ -71,6 +71,7 @@ class ResponseCompressor:
     """Handles adaptive payload compression according to client headers."""
 
     def __init__(self, min_size: int = 512) -> None:
+        """Set the minimum payload size eligible for public-response compression."""
         self.min_size = min_size
 
     def compress(

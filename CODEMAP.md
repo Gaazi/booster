@@ -5,35 +5,46 @@ Generated with `python refresh_docs.py`.
 ## go_fast/__init__.py
 
 
+## go_fast/asgi_response.py
+
+- `parse_headers` (line 8): Combine repeated fields so restrictive cache directives cannot be hidden.
+- `ASGIResponseOptimizer` (line 18): Capture one bounded public response and forward all other messages.
+- `representation_headers` (line 70): Replace length, validators and negotiation fields after changing a body.
+- `__init__` (line 21): Keep request state separate from the shared middleware instance.
+- `__call__` (line 28): Forward streams and extensions immediately, optimizing a single body.
+- `_optimized` (line 49): Minify and compress public bytes, preserving unrelated response fields.
+
 ## go_fast/booster.py
 
-- `parse_asgi_headers` (line 16): Convert ASGI header tuples to normalized lower-case dict.
-- `RocketBooster` (line 21): High-speed ASGI middleware combining caching, minification, and compression.
-- `__init__` (line 24): Internal implementation.
-- `attach` (line 47): Convenient one-line setup for FastAPI or Starlette apps.
-- `__call__` (line 53): ASGI request handler routing HTTP requests through optimizer.
-- `_handle_get` (line 78): Check cache and serve response immediately if valid.
-- `_send_304` (line 116): Send HTTP 304 Not Modified.
-- `_send_cached` (line 122): Send complete cached response to client.
-- `_passthrough_and_cache` (line 145): Execute downstream app, capture response, minify, compress, and cache.
-- `intercept_send` (line 160): Internal implementation.
+- `RocketBooster` (line 16): Accelerate public responses while leaving personalized traffic untouched.
+- `__init__` (line 19): Initialize bounded caches or share the instance exposed by attach.
+- `attach` (line 36): Register middleware and expose the cache actually serving the app.
+- `cache_key` (line 42): Isolate representations by scheme, host, path and query.
+- `__call__` (line 49): Bypass private requests and invalidate cached reads around mutations.
+- `_handle_get` (line 71): Serve a public cached representation or its conditional response.
+- `_send_304` (line 94): Send a public conditional response without a payload.
+- `_send_cached` (line 101): Send cached content with validators matching the transformed bytes.
+- `_passthrough_and_cache` (line 109): Optimize a bounded response while respecting ASGI streaming semantics.
 
 ## go_fast/cache.py
 
-- `synchronized` (line 12): Serialize cache operations across worker threads.
-- `CacheEntry` (line 23): Cached response item with metadata and expiration.
-- `FastMemoryCache` (line 39): Thread-safe LRU in-memory cache supporting TTL and key invalidation.
-- `guarded` (line 15): Hold the cache lock for the complete operation.
-- `is_expired` (line 34): Check if entry has outlived its time to live.
-- `__init__` (line 42): Internal implementation.
-- `compute_etag` (line 52): Generate a fast ETag for binary payload.
-- `make_key` (line 57): Generate unique cache key based on request parameters.
-- `get` (line 63): Retrieve entry by key if valid and not expired.
-- `set` (line 75): Insert or update a cache entry with LRU eviction.
-- `delete` (line 105): Remove single entry by key.
-- `invalidate_path_prefix` (line 114): Invalidate all cached items whose original path starts with prefix.
-- `clear` (line 122): Clear all cached entries.
-- `count` (line 128): Return count of active entries.
+- `synchronized` (line 13): Serialize cache operations across worker threads.
+- `CacheEntry` (line 24): Cached response item with metadata and expiration.
+- `FastMemoryCache` (line 40): Thread-safe LRU in-memory cache supporting TTL and key invalidation.
+- `guarded` (line 16): Hold the cache lock for the complete operation.
+- `is_expired` (line 35): Check if entry has outlived its time to live.
+- `__init__` (line 43): Initialize item and byte budgets with a monotonic default expiration.
+- `compute_etag` (line 60): Generate a fast ETag for binary payload.
+- `make_key` (line 65): Generate unique cache key based on request parameters.
+- `get` (line 71): Retrieve entry by key if valid and not expired.
+- `set` (line 83): Insert or update a cache entry with LRU eviction.
+- `_insert_entry` (line 107): Insert one entry with LRU eviction under the caller's cache lock.
+- `_entry_size` (line 120): Include response bodies and headers in the memory budget.
+- `set_if_current` (line 125): Reject responses fetched before an invalidation or target change.
+- `delete` (line 130): Remove single entry by key.
+- `invalidate_path_prefix` (line 139): Invalidate all cached items whose original path starts with prefix.
+- `clear` (line 148): Clear all cached entries.
+- `count` (line 156): Return count of active entries.
 
 ## go_fast/compressor.py
 
@@ -41,63 +52,101 @@ Generated with `python refresh_docs.py`.
 - `choose_encoding` (line 38): Select the best compression algorithm supported by client.
 - `compress_payload` (line 59): Compress bytes using chosen encoding.
 - `ResponseCompressor` (line 70): Handles adaptive payload compression according to client headers.
-- `__init__` (line 73): Internal implementation.
-- `compress` (line 76): Compress content if eligible, returning compressed bytes and encoding.
+- `__init__` (line 73): Set the minimum payload size eligible for public-response compression.
+- `compress` (line 77): Compress content if eligible, returning compressed bytes and encoding.
 
 ## go_fast/django_support.py
 
-- `DjangoRocketMiddleware` (line 13): WSGI-compatible Django middleware providing caching and compression.
-- `__init__` (line 16): Internal implementation.
-- `__call__` (line 23): Process incoming Django request with caching and compression.
+- `DjangoRocketMiddleware` (line 12): Cache only explicitly public, bounded and non-streaming Django responses.
+- `__init__` (line 15): Initialize the downstream callable and bounded optimization services.
+- `__call__` (line 23): Bypass personalized requests and invalidate derived reads around writes.
+- `_cached_response` (line 45): Restore headers with a length matching the cached representation.
+- `_store_response` (line 56): Cache only a public response and correct validators after minification.
 
 ## go_fast/http_policy.py
 
-- `request_cacheable` (line 7): Exclude personalized, conditional and explicitly uncached requests.
-- `response_cacheable` (line 15): Store only responses safe for a shared representation cache.
-- `merge_vary` (line 23): Preserve existing negotiation fields while adding compression.
+- `cache_directives` (line 7): Parse case-insensitive cache directive names without substring matches.
+- `request_cacheable` (line 13): Exclude personalized, conditional and explicitly uncached requests.
+- `response_cacheable` (line 24): Store only responses safe for a shared representation cache.
+- `filtered_headers` (line 36): Remove hop-by-hop fields including fields nominated by Connection.
+- `merge_vary` (line 44): Preserve existing negotiation fields while adding compression.
+
+## go_fast/local_security.py
+
+- `validate_target` (line 14): Reject credentials, malformed ports, special networks and gateway loops.
+- `LocalAccessGuard` (line 38): Block remote clients, DNS rebinding and browser requests from other origins.
+- `__init__` (line 41): Select management restrictions or the isolated gateway access policy.
+- `__call__` (line 45): Validate raw host and peer before routing any HTTP request.
+- `_error` (line 66): Return the precise failed local browser access boundary.
+- `secure_send` (line 55): Make management responses private and prevent framing or sniffing.
 
 ## go_fast/minifier.py
 
-- `minify_html` (line 16): Safely collapse redundant whitespace and strip comments from HTML.
-- `minify_css` (line 31): Minify CSS by stripping comments and unneeded spacing.
-- `minify_json` (line 46): Serialize JSON without extraneous whitespace.
-- `FastMinifier` (line 55): Dispatches payload to type-specific minifier.
-- `protect` (line 19): Keep whitespace-sensitive HTML verbatim.
-- `protect` (line 34): Keep quoted CSS values verbatim.
-- `minify` (line 59): Minify text content based on its content-type.
+- `minify_html` (line 9): Preserve HTML verbatim; regex rewriting can change markup and text meaning.
+- `minify_css` (line 14): Preserve CSS verbatim; selectors and custom properties depend on whitespace.
+- `minify_json` (line 19): Remove JSON whitespace without rounding numbers or rewriting string values.
+- `FastMinifier` (line 28): Optimize UTF-8 JSON while preserving all other content byte for byte.
+- `minify` (line 32): Remove only insignificant JSON whitespace from explicitly UTF-8 content.
 
 ## go_fast/proxy.py
 
-- `SpeedProxyServer` (line 20): Universal reverse proxy that accelerates any target web server.
-- `__init__` (line 23): Internal implementation.
-- `get_client` (line 31): Return pooled async HTTP client for connection reuse.
-- `set_target` (line 37): Update upstream target URL and reset cache.
-- `handle_request` (line 42): Intercept, cache, optimize, and proxy incoming client request.
-- `_check_cache` (line 61): Check cache and return 304 or cached content if valid.
-- `_fetch_and_cache` (line 97): Fetch from origin server, minify, compress, and store in cache.
-- `close` (line 152): Release upstream pooled connections on shutdown.
+- `RejectCookies` (line 24): Never retain upstream credentials in a shared connection pool.
+- `SpeedProxyServer` (line 32): Accelerate public origin responses without retaining personalized bodies.
+- `set_ok` (line 27): Reject every upstream cookie; clients manage their own cookie state.
+- `__init__` (line 35): Initialize a trusted target and resource limits.
+- `get_client` (line 45): Reuse connections without environment proxies or a shared cookie jar.
+- `set_target` (line 54): Validate a new origin and invalidate pending and stored representations.
+- `_key` (line 60): Keep scheme, host and encoded path representations separate.
+- `handle_request` (line 66): Route requests and invalidate all derived reads around mutations.
+- `_check_cache` (line 85): Serve a public representation with the same validators on miss and hit.
+- `_fetch_and_cache` (line 101): Fetch one raw origin response with upload and buffering limits.
+- `_prepare_response` (line 129): Transform only explicitly public responses and preserve repeated headers.
+- `close` (line 148): Release upstream pooled connections on shutdown.
+
+## go_fast/proxy_transport.py
+
+- `BodyTooLarge` (line 15): Signal a request exceeding the gateway upload limit.
+- `request_body` (line 19): Bound request buffering even when Content-Length is missing or forged.
+- `outgoing_headers` (line 31): Prevent proxy identity spoofing and request unencoded upstream content.
+- `upstream_body` (line 39): Buffer small raw responses and stream larger bodies with bounded memory.
+- `stream_body` (line 62): Release the pooled connection on completion, cancellation or read failure.
+
+## go_fast/server.py
+
+- `lifespan` (line 22): Close pooled upstream connections when the gateway stops.
+- `serve_dashboard` (line 42): Serve the management and telemetry dashboard.
+- `get_stats` (line 49): Return live telemetry metrics and cache status.
+- `set_target` (line 58): Update target website URL for the accelerator.
+- `clear_cache` (line 71): Flush in-memory cache and reset telemetry.
+- `is_port_open` (line 78): Quickly check if a local port has an active listening server.
+- `detect_local` (line 86): Scan common development ports for running applications.
+- `find_local_target` (line 91): Find a development server with concurrent bounded loopback probes.
+- `gateway_redirect` (line 104): Keep old gateway links working on the isolated upstream origin.
+- `proxy_gateway` (line 113): Proxy requests through the caching and optimization engine.
+- `launch_browser` (line 118): Open user browser to the dashboard.
+- `main` (line 123): Launch the local dashboard and acceleration gateway.
+- `serve_local` (line 136): Run dashboard and gateway on separate origins with shared lifecycle.
+- `stop_servers` (line 148): Stop both origins together on a terminal interrupt or termination.
 
 ## go_fast/telemetry.py
 
-- `RequestLog` (line 9): Record of an individual processed HTTP request.
-- `TelemetryTracker` (line 21): Thread-safe statistics accumulator for the booster engine.
-- `__init__` (line 24): Internal implementation.
-- `record_request` (line 34): Record an incoming request and update aggregate statistics.
-- `get_stats` (line 71): Return summary metrics for dashboard and monitoring.
-- `reset` (line 96): Reset all tracked performance metrics.
+- `RequestLog` (line 11): Record of an individual processed HTTP request.
+- `TelemetryTracker` (line 23): Thread-safe statistics accumulator for the booster engine.
+- `__init__` (line 26): Initialize locked counters and a bounded redacted log collection.
+- `record_request` (line 39): Record an incoming request and update aggregate statistics.
+- `_append_log` (line 64): Append one redacted log while the caller holds the telemetry lock.
+- `get_stats` (line 82): Return summary metrics for dashboard and monitoring.
+- `reset` (line 108): Reset all tracked performance metrics.
 
 ## run.py
 
-- `lifespan` (line 21): Close pooled upstream connections when the gateway stops.
-- `serve_dashboard` (line 38): Serve the management and telemetry dashboard.
-- `get_stats` (line 45): Return live telemetry metrics and cache status.
-- `set_target` (line 54): Update target website URL for the accelerator.
-- `clear_cache` (line 67): Flush in-memory cache and reset telemetry.
-- `is_port_open` (line 74): Quickly check if a local port has an active listening server.
-- `detect_local` (line 82): Scan common development ports for running applications.
-- `proxy_gateway` (line 95): Proxy requests through the caching and optimization engine.
-- `launch_browser` (line 100): Open user browser to the dashboard.
-- `main` (line 105): Launch the local dashboard and acceleration gateway.
+
+## setup_plugin.py
+
+- `environment_python` (line 16): Locate the plugin interpreter independently of the current directory.
+- `run_checked` (line 21): Run an exact argument vector and surface installation or startup failures.
+- `setup_environment` (line 26): Install dependencies only on first use or when project requirements change.
+- `main` (line 43): Prepare the plugin, optionally check setup, and open the local dashboard.
 
 ```mermaid
 graph TD
@@ -108,6 +157,8 @@ graph TD
   __init__ --> minifier
   __init__ --> proxy
   __init__ --> telemetry
+  asgi_response --> http_policy
+  booster --> asgi_response
   booster --> cache
   booster --> compressor
   booster --> http_policy
@@ -118,10 +169,18 @@ graph TD
   django_support --> http_policy
   django_support --> minifier
   django_support --> telemetry
+  local_security --> asgi_response
+  proxy --> asgi_response
   proxy --> cache
   proxy --> compressor
   proxy --> http_policy
+  proxy --> local_security
   proxy --> minifier
+  proxy --> proxy_transport
   proxy --> telemetry
-  run --> proxy
+  proxy_transport --> http_policy
+  run --> server
+  server --> local_security
+  server --> proxy
+  telemetry --> cache
 ```

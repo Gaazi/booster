@@ -10,3 +10,5 @@ dist/
 build/
 
 docs/
+.venv/
+.go-fast-setup.json

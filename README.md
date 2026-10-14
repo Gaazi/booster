@@ -1,89 +1,78 @@
-# go_fast 🚀 Rocket Speed Accelerator
+# go_fast local acceleration plugin
 
-> **Universal Ultra-Fast Caching, Minification, and Compression Plugin for FastAPI, Python, and Web Apps.**
+Place this repository in a `go_fast` folder inside your project's main folder.
+Double-click `start.bat`, or run `python setup_plugin.py`. Python 3.10+ is required;
+the first setup needs internet access. The launcher prepares its own `.venv`,
+updates its installer, installs dependencies, and opens the dashboard. Later
+launches reuse the environment; changed requirements trigger setup again.
+Your application's environment and source are unchanged.
 
-`go_fast` is a drop-in performance engine designed to make your web applications and APIs **blazing fast (0.5ms - 2ms response times)** with zero configuration headaches.
+Start your application first for automatic local port detection. If it cannot
+be found, enter its trusted base URL in the dashboard, or run
+`python setup_plugin.py --target http://127.0.0.1:8000`.
 
----
+- Dashboard: `http://127.0.0.1:5050/`
+- Accelerated application: `http://127.0.0.1:5051/`
+- Legacy dashboard `/site/` links redirect to the isolated gateway.
+- Both ports must be free; one gateway can run at a time.
+- `--check` verifies setup without launching; `--no-browser` starts without a browser.
 
-## ⚡ Key Superpowers
+## Public acceleration
 
-1. **Microsecond In-Memory Cache (RAM):**
-   - High-throughput LRU cache with TTL expiration.
-   - Cached API endpoints respond in less than **1 millisecond**.
-   - Automatic cache invalidation on write mutations (`POST`, `PUT`, `DELETE`, `PATCH`).
+Caching and additional compression require an origin response with
+`Cache-Control: public`. Mark only data safe for every user. Authorization,
+cookies, ranges, preconditions, Set-Cookie, private responses, custom Vary fields,
+and explicit freshness directives bypass caching and additional transformation.
+Undeclared responses pass through unchanged. Cache TTL defaults to 300 seconds;
+freshness directives such as max-age are conservatively passed through.
+Writes invalidate all cached reads before and after execution; pending responses
+cannot refill an invalidated cache. Keys isolate scheme, host, path and query.
 
-2. **Adaptive Brotli & Gzip Compression:**
-   - C-level Brotli compression (reduces payload by up to 85%).
-   - Automatic fallback to standard Gzip/Deflate.
+Each response cache has a 64 MiB body/header budget and an item limit. Gateway
+uploads are limited to 8 MB. Responses exceeding approximately 2 MB plus one
+64 KiB chunk stream without caching. Connections are pooled with no retained
+origin cookies or environment proxies. Duplicate headers survive. Compression
+reuses up to 64 small public variants. HTML/CSS remain verbatim to preserve their
+semantics; JSON whitespace removal preserves numbers and strings.
 
-3. **On-the-fly Minification:**
-   - Instant whitespace and comment stripping for HTML, CSS, JavaScript, and JSON.
-
-4. **HTTP 304 & ETag Engine:**
-   - Automatically generates Blake2b ETags.
-   - Returns `304 Not Modified` with zero bytes transferred when client already has the data.
-
-5. **Two Execution Modes:**
-   - **Mode A (FastAPI / ASGI Drop-in):** Add 1 line in your Python codebase.
-   - **Mode B (One-Click Standalone Gateway):** Double-click `start.bat` to boost any local or remote website without modifying a single line of code!
-
----
-
-## 🚀 Quickstart
-
-### 1. One-Click Standalone Mode (Windows)
-Double-click `start.bat` (or run `python run.py`).
-- The **Cyberpunk Dark-Themed Dashboard** automatically launches at: `http://localhost:5050`
-- Hit **"Auto-Detect Local Port"** or enter your app URL (e.g. `http://localhost:8000`).
-- Access your accelerated app at: `http://localhost:5050/site/`
-- Watch live latency drop and bandwidth saved in real time!
-
----
-
-### 2. FastAPI Drop-In Plugin (1 Line of Code)
-
+For direct middleware integration, install into your application's own environment
+using `python -m pip install ./go_fast` from the parent folder:
 ```python
-from fastapi import FastAPI
 from go_fast import RocketBooster
-
-app = FastAPI()
-
-# ⚡ One-line activation:
 RocketBooster.attach(app)
+# Public endpoints must return headers={"Cache-Control": "public"}.
+```
+For Django, add `go_fast.DjangoRocketMiddleware` to MIDDLEWARE. Django is optional.
+The standalone gateway requires no application source changes. Built wheels
+include dashboard assets and the `go-fast` command.
 
-@app.get("/items")
-def get_items():
-    return [{"id": i, "name": f"Product {i}"} for i in range(100)]
+## Security boundary
+
+Dashboard and upstream pages use separate origins. Loopback peer/Host checks,
+Origin and Fetch Metadata checks protect local access. Management writes also
+require `X-Go-Fast-Admin: 1`; management responses use no-store, anti-framing and
+no-sniff headers. Telemetry does not retain request paths, queries, credentials,
+headers or bodies. URL validation rejects embedded credentials and special addresses.
+
+Use trusted local development targets. This is not an authenticated public
+reverse proxy or a general SSRF firewall: private/local targets are intentional,
+and DNS-based special addresses are not comprehensively blocked. A local process
+with your account's privileges can access the service. The upstream application's
+authentication, authorization, TLS, database security and security headers remain
+its responsibility. Absolute origin URLs and secure/domain-scoped cookies may need
+upstream configuration. No audit guarantees zero vulnerabilities or a fixed latency.
+
+## Verification
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install pytest django pip-audit bandit
+.\.venv\Scripts\python.exe -m pytest -q
+.\.venv\Scripts\python.exe -m pip_audit --skip-editable
+.\.venv\Scripts\python.exe -m bandit -r go_fast run.py setup_plugin.py -ll
+python refresh_docs.py
 ```
 
----
-
-### 3. Django Setup
-
-Add `DjangoRocketMiddleware` to your `settings.py`:
-
-```python
-MIDDLEWARE = [
-    'go_fast.DjangoRocketMiddleware',
-    # ... other middlewares ...
-]
-```
-
----
-
-## 🧪 Running Tests
-
-```bash
-python -m pytest tests/
-```
-
-
-### Reliability and verification
-
-Run `python -m pytest -q` for regression coverage. Run `python refresh_docs.py`
-to regenerate `CODEMAP.md` and the ignored browsable `docs/index.html`.
-Shared caches bypass authenticated/cookie requests, private responses, custom
-Vary fields, and explicit cache directives. ASGI streaming responses pass through.
-Compression respects quality values and reuses up to 64 small payload variants.
-The dashboard gateway is intended for local development and binds to loopback.
+The full Bandit scan reports two low-severity subprocess review notices in
+setup_plugin.py. Calls use fixed interpreter paths, exact argument vectors,
+checked exit codes and no shell; tests verify these boundaries. Real-socket tests
+need ports 5050/5051 free. Documentation refresh generates CODEMAP.md and ignored HTML docs.

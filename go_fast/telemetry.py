@@ -3,6 +3,8 @@
 import time
 from dataclasses import dataclass, field
 from typing import Any, Dict, List
+from threading import RLock
+from go_fast.cache import synchronized
 
 
 @dataclass
@@ -22,7 +24,9 @@ class TelemetryTracker:
     """Thread-safe statistics accumulator for the booster engine."""
 
     def __init__(self, max_logs: int = 50) -> None:
+        """Initialize locked counters and a bounded redacted log collection."""
         self.max_logs = max_logs
+        self._lock = RLock()
         self.total_requests: int = 0
         self.cache_hits: int = 0
         self.cache_misses: int = 0
@@ -31,6 +35,7 @@ class TelemetryTracker:
         self.total_latency_saved_ms: float = 0.0
         self.recent_logs: List[Dict[str, Any]] = []
 
+    @synchronized
     def record_request(
         self,
         method: str,
@@ -54,9 +59,14 @@ class TelemetryTracker:
         self.served_bytes += served_size
         self.total_latency_saved_ms += max(0.0, latency_saved_ms)
 
+        self._append_log(method, status_code, duration_ms, cached, served_size, compression)
+
+    def _append_log(self, method: str, status_code: int, duration_ms: float, cached: bool,
+                    served_size: int, compression: str) -> None:
+        """Append one redacted log while the caller holds the telemetry lock."""
         log_entry = {
             "method": method,
-            "path": path,
+            "path": "[redacted]",
             "status_code": status_code,
             "duration_ms": round(duration_ms, 2),
             "cached": cached,
@@ -68,6 +78,7 @@ class TelemetryTracker:
         if len(self.recent_logs) > self.max_logs:
             self.recent_logs.pop()
 
+    @synchronized
     def get_stats(self) -> Dict[str, Any]:
         """Return summary metrics for dashboard and monitoring."""
         hit_ratio = (
@@ -90,9 +101,10 @@ class TelemetryTracker:
             "bandwidth_saved_bytes": bandwidth_saved,
             "bandwidth_saved_percent": round(savings_percent, 1),
             "total_latency_saved_ms": round(self.total_latency_saved_ms, 1),
-            "recent_logs": self.recent_logs[:15],
+            "recent_logs": [dict(log) for log in self.recent_logs[:15]],
         }
 
+    @synchronized
     def reset(self) -> None:
         """Reset all tracked performance metrics."""
         self.total_requests = 0

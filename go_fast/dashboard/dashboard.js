@@ -55,7 +55,7 @@ async function applyTarget() {
   try {
     const res = await fetch("/api/set-target", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "X-Go-Fast-Admin": "1" },
       body: JSON.stringify({ url: url })
     });
     const data = await res.json();
@@ -89,7 +89,8 @@ async function autoDetect() {
 
 async function clearCache() {
   try {
-    await fetch("/api/clear-cache", { method: "POST" });
+    const res = await fetch("/api/clear-cache", { method: "POST", headers: { "X-Go-Fast-Admin": "1" } });
+    if (!res.ok) throw new Error("Cache clear failed");
     alert("🗑️ In-memory cache cleared successfully!");
     fetchStats();
   } catch (err) {
