@@ -26,3 +26,18 @@ def test_clear_cache_preserves_lifetime_metrics() -> None:
     status = engine.get_status()
     assert status["cache"]["items"] == 0 and status["cache"]["bytes"] == 0
     assert status["metrics"]["total_requests"] == 1
+
+
+def test_host_can_limit_cache_memory() -> None:
+    """A small website can bound RAM without reimplementing the cache."""
+    engine = RocketBooster(None, max_cache_bytes=8)
+    engine.cache.set("too-large", "/static/large", 200, [], b"x" * 9)
+    status = engine.get_status()
+    assert status["cache"]["items"] == 0 and status["cache"]["max_bytes"] == 8
+
+
+def test_invalid_memory_budget_fails_at_attachment() -> None:
+    """An invalid byte cap cannot leave the website with an unbounded cache."""
+    import pytest
+    with pytest.raises(ValueError, match="max_bytes"):
+        RocketBooster(None, max_cache_bytes=0)

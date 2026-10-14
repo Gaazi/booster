@@ -21,16 +21,16 @@ Generated with `python refresh_docs.py`.
 
 - `RocketBooster` (line 17): Accelerate public and static responses and adaptively optimize dynamic traffic.
 - `__init__` (line 20): Initialize bounded caches or share the instance exposed by attach.
-- `attach` (line 43): Register middleware and expose the cache actually serving the app.
-- `cache_key` (line 51): Isolate representations by scheme, host, path and query.
-- `__call__` (line 58): Accelerate static and public reads, optimize dynamic responses, and handle mutations.
-- `_handle_mutation` (line 85): Invalidate before and after writes, including failed or concurrent writes.
-- `_invalidate` (line 94): Keep full invalidation safe by default for cross-route dependencies.
-- `_handle_get` (line 101): Serve a public cached representation or its conditional response.
-- `_send_304` (line 125): Retain origin cache and security headers on conditional cache hits.
-- `_send_cached` (line 134): Send cached content with validators matching the transformed bytes.
-- `_passthrough_and_cache` (line 142): Optimize a bounded response while respecting ASGI streaming semantics.
-- `get_status` (line 147): Return a host-dashboard snapshot without credentials, URLs or payloads.
+- `attach` (line 45): Register middleware and expose the cache actually serving the app.
+- `cache_key` (line 53): Isolate representations by scheme, host, path and query.
+- `__call__` (line 60): Accelerate static and public reads, optimize dynamic responses, and handle mutations.
+- `_handle_mutation` (line 87): Invalidate before and after writes, including failed or concurrent writes.
+- `_invalidate` (line 96): Keep full invalidation safe by default for cross-route dependencies.
+- `_handle_get` (line 103): Serve a public cached representation or its conditional response.
+- `_send_304` (line 127): Retain origin cache and security headers on conditional cache hits.
+- `_send_cached` (line 136): Send cached content with validators matching the transformed bytes.
+- `_passthrough_and_cache` (line 144): Optimize a bounded response while respecting ASGI streaming semantics.
+- `get_status` (line 149): Return a host-dashboard snapshot without credentials, URLs or payloads.
 
 ## booster/cache.py
 

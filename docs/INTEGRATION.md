@@ -41,6 +41,7 @@ engine = booster.attach(
     enable_minification=False,
     enable_compression=False,
     cache_ttl=300,
+    max_cache_bytes=8 * 1024 * 1024,
 )
 ```
 
@@ -79,7 +80,8 @@ the serving process; it is not a fleet-wide cache purge or aggregate report.
 
 - Origin static max-age/s-maxage bounds the configured RAM TTL. Cache hits report
   Age; conditional hits retain origin cache/security headers.
-- The cache is per process, bounded by items and a 64 MiB byte budget. Restarting
+- The cache is per process, bounded by items and a configurable byte budget
+  (`max_cache_bytes`, default 64 MiB). Restarting
   clears it. Multiple workers do not share invalidation.
 - Writes invalidate all cached reads before and after completion by default.
   Surgical invalidation is opt-in and unsafe when writes affect other paths.

@@ -22,6 +22,7 @@ class RocketBooster:
                  min_compress_size: int = 512, compress_dynamic: bool = False,
                  surgical_invalidation: bool = False,
                  cache_policy: CachePolicy | None = None,
+                 max_cache_bytes: int = 64 * 1024 * 1024,
                  _instance: "RocketBooster | None" = None) -> None:
         """Initialize bounded caches or share the instance exposed by attach."""
         if _instance is not None:
@@ -29,7 +30,8 @@ class RocketBooster:
             self.app = app
             return
         self.app = app
-        self.cache = FastMemoryCache(max_items=max_cache_items, default_ttl=cache_ttl)
+        self.cache = FastMemoryCache(max_items=max_cache_items, default_ttl=cache_ttl,
+                                     max_bytes=max_cache_bytes)
         self.compressor = ResponseCompressor(min_size=min_compress_size)
         self.minifier = FastMinifier()
         self.telemetry = TelemetryTracker()
