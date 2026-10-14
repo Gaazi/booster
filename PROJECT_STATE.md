@@ -1,5 +1,5 @@
 # Project State
-Updated: 2026-10-14 17:51
+Updated: 2026-10-14 18:32
 ## Done
 - Initialized git repo and synced global agent rules.
 - Designed and implemented `go_fast` package:
@@ -12,8 +12,9 @@ Updated: 2026-10-14 17:51
   - `TelemetryTracker`: Live stats, latency savings, bandwidth reduction, and request logs.
 - Built interactive glassmorphism Web Dashboard (`dashboard/` and `run.py`).
 - Added one-click Windows launcher (`start.bat`).
-- Implemented comprehensive pytest suite with 18 passing unit and integration tests.
-- Installed `go_fast` package in editable mode with full global import support.
+- Implemented comprehensive pytest suite with 18 passing tests.
+- Installed `go_fast` in editable mode with global import support.
+- Added comprehensive terminal command reference in `COMMANDS.md`.
 ## Pending
 - Optional desktop system tray or standalone PyInstaller executable if desired.
 ## Next Step
