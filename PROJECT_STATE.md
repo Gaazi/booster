@@ -1,7 +1,8 @@
 # Project State
-Updated: 2026-10-14 21:58
+Updated: 2026-10-14 22:01
 
 ## Done
+- Set repository default branch to `main` on GitHub so all clones and public downloads default to production.
 - Converted booster-node to native TypeScript (src/*.ts) with tsconfig and declaration files (types/*.d.ts).
 - Added comprehensive TypeScript test suite (test-ts.ts) with 100% pass rate.
 - Documented TypeScript 7 (Go-based native compiler) architectural evaluation and trade-offs.
@@ -12,4 +13,4 @@ Updated: 2026-10-14 21:58
 - None.
 
 ## Next Step
-- Ready for live deployment, user feedback, or next phase.
+- Continue local feature development on `dev`; releases strictly deploy from `main`.
