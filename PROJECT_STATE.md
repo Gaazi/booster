@@ -1,7 +1,8 @@
 # Project State
-Updated: 2026-10-14 19:43
+Updated: 2026-10-14 19:50
 
 ## Done
+- Created local branches `demo` and `main` alongside `dev`.
 - Hardened cache privacy, host isolation, cookie separation, header preservation.
 - Added ASGI streaming (asgi_response), local_security, proxy_transport, server modules.
 - Moved dashboard into go_fast/dashboard/ package; setup_plugin.py for portable install.
