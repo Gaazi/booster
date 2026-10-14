@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.responses import HTMLResponse, JSONResponse
 from starlette.testclient import TestClient
 
-from go_fast.booster import RocketBooster
+from booster.booster import RocketBooster
 
 
 def create_test_app() -> FastAPI:

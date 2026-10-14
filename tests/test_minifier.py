@@ -3,7 +3,7 @@
 from __future__ import annotations
 from typing import Any, Callable, AsyncIterator, Iterator
 
-from go_fast.minifier import FastMinifier, minify_css, minify_html, minify_json
+from booster.minifier import FastMinifier, minify_css, minify_html, minify_json
 
 
 def test_minify_html() -> None:

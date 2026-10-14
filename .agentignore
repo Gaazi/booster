@@ -10,7 +10,7 @@ node_modules/
 build/
 dist/
 *.egg-info/
-go_fast.egg-info/
+booster.egg-info/
 
 # Python bytecode & cache
 __pycache__/

@@ -13,13 +13,13 @@ import setup_plugin
 
 def plugin_folder(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Any:
     """Make a nested plugin directory containing spaces and an existing interpreter."""
-    root = tmp_path / "Main Project" / "go_fast"
+    root = tmp_path / "Main Project" / "booster"
     root.mkdir(parents=True)
-    (root / "pyproject.toml").write_text('[project]\nname="go_fast"')
+    (root / "pyproject.toml").write_text('[project]\nname="booster"')
     environment = root / ".venv"
     monkeypatch.setattr(setup_plugin, "ROOT", root)
     monkeypatch.setattr(setup_plugin, "ENVIRONMENT", environment)
-    monkeypatch.setattr(setup_plugin, "STAMP", root / ".go-fast-setup.json")
+    monkeypatch.setattr(setup_plugin, "STAMP", root / ".booster-setup.json")
     interpreter = setup_plugin.environment_python()
     interpreter.parent.mkdir(parents=True)
     interpreter.touch()

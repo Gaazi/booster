@@ -9,9 +9,9 @@ Run from the project root directory.
 | Run full Python tests (109 tests) | `pytest` |
 | Run Node.js tests (5 suites) | `node booster-node/test/test.js` |
 | Force check updates | `curl http://127.0.0.1:5050/api/check-update` |
-| Clear cache & trigger CDN purge | `curl -X POST -H "X-Go-Fast-Admin: 1" http://127.0.0.1:5050/api/clear-cache` |
+| Clear cache & trigger CDN purge | `curl -X POST -H "X-Booster-Admin: 1" http://127.0.0.1:5050/api/clear-cache` |
 | Refresh docs & CODEMAP | `python refresh_docs.py` |
-| Compile & syntax verification | `python -m compileall booster go_fast tests run.py setup_plugin.py` |
+| Compile & syntax verification | `python -m compileall booster tests run.py setup_plugin.py` |
 
 Dashboard: http://127.0.0.1:5050/
 Accelerated Gateway: http://127.0.0.1:5051/

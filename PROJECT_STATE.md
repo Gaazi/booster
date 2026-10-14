@@ -1,19 +1,12 @@
 # Project State
-Updated: 2026-10-14 22:38
-
-> **AGENT NOTICE**: Read ONLY this file, README.md, and docs/. Do NOT scan the entire codebase. Inspect code with `rg` only when actively editing. Update this file when done.
-
+Updated: 2026-10-14 23:48
 ## Done
-- Implemented Universal Smart Booster 4-tier adaptive engine for Python (FastAPI/Django) and Node.js.
-- Implemented static asset turbo-caching with cookie independence and in-memory delivery.
-- Implemented safe on-the-fly Brotli/Gzip compression for dynamic/private responses without shared cache leakage.
-- Added surgical path-prefix cache invalidation on mutations.
-- Enhanced booster-node to strictly prevent private response cache leakage.
-- Verified 105 Python tests (100% passing) and 7 Node.js tests (100% passing).
-- Maintained `.agentignore` and token-saving documentation-first protocol.
-
+- Consolidated Python engine, package, command and dashboard under Booster only; retired originals moved into ignored trash. Updated all imports, launcher and management headers.
+- Added reusable route CachePolicy, credential/range isolation, origin freshness bounds, bounded static-file buffering, safe CDN behavior and duplicate attach rejection.
+- Default release checks do not auto-install. Added agent integration/review guide and prioritized handoff; source map regenerated.
+- Verified 142 Python tests including Django and real-socket gateway; 7 Node tests; changed Python syntax/size audit, pip check and diff check passed.
 ## Pending
-- Future implementation of Phase 2 (Go) and Phase 3 (Rust).
-
+- Invite integration and application benchmarks pending. Lightweight optional server dependencies and independent Node policy parity audit are follow-ups in docs/NEXT_STEPS.md.
+- Go/Rust phases and production/physical-phone validation remain pending; no branch promotion or production action authorized.
 ## Next Step
-- Final verification and production readiness across diverse target websites.
+- Integrate the reviewed pinned Booster revision into Invite on dev and verify privacy plus cold/warm asset behavior.

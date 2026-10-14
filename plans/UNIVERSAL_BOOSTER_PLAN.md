@@ -57,18 +57,18 @@ flowchart TD
 ## 3. Implementation Steps
 
 ### Step 1: Text & Markup Minifiers Enhancement
-- **File:** `go_fast/minifier.py` & `booster/minifier.py`
+- **File:** `booster/minifier.py`
 - Implement safe regex-based HTML minification (stripping comments outside IE conditionals and collapsible tag whitespace outside `<pre>`, `<code>`, `<script>`, `<textarea>`).
 - Implement safe CSS minification (stripping comments and redundant spacing).
 
 ### Step 2: Smart Classifier & Private Accelerator in ASGI / Python
-- **Files:** `go_fast/booster.py`, `go_fast/asgi_response.py`, `booster/booster.py`, `booster/asgi_response.py`
+- **Files:** `booster/booster.py`, `booster/asgi_response.py`
 - Add route classification logic (`is_static_asset`, `is_private_request`).
 - Enhance `ASGIResponseOptimizer` to apply on-the-fly minification and compression to dynamic/private responses without caching in the shared dictionary.
 - Update mutation handler to use surgical `invalidate_path_prefix`.
 
 ### Step 3: Django Adapter Enhancement
-- **Files:** `go_fast/django_support.py`, `booster/django_support.py`
+- **File:** `booster/django_support.py`
 - Apply the same 4-tier logic to Django middleware.
 
 ### Step 4: Node.js Security & Smart Adaptive Engine

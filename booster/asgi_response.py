@@ -2,7 +2,8 @@
 
 from typing import Any, Callable
 
-from booster.http_policy import response_cacheable, merge_vary, is_static_asset
+from booster.http_policy import (response_cacheable, request_cacheable, response_ttl,
+                                 cache_directives, merge_vary, is_static_asset)
 
 
 def parse_headers(raw: list[tuple[bytes, bytes]]) -> dict[str, str]:
@@ -26,34 +27,58 @@ class ASGIResponseOptimizer:
         self.generation = booster.cache.generation
         self.is_static = is_static_asset(scope.get("path", "/"))
         self.cacheable = False
+        self.body = bytearray()
 
     async def __call__(self, message: dict[str, Any]) -> None:
         """Forward streams and extensions immediately, optimizing a single body."""
         if message["type"] == "http.response.start":
-            self.start = dict(message)
-            headers_dict = parse_headers(message.get("headers", []))
-            self.cacheable = response_cacheable(headers_dict, is_static=self.is_static)
-            can_opt = (self.booster.compress_dynamic and message.get("status") == 200
-                       and not any(k.lower() == b"content-encoding" for k, v in message.get("headers", [])))
-            self.forwarding = (message.get("status") != 200
-                               or message.get("trailers", False)
-                               or (not self.cacheable and not can_opt))
+            self._start_response(message)
             if self.forwarding:
                 await self.send(message)
             return
         if self.forwarding:
             await self.send(message)
             return
-        if (message["type"] != "http.response.body" or message.get("more_body")
-                or len(message.get("body", b"")) > 2_000_000):
-            self.forwarding = True
-            await self.send(self.start)
-            await self.send(message)
+        if not await self._collect_body(message):
             return
         if self.cacheable:
-            await self._optimized_cacheable(message.get("body", b""))
+            await self._optimized_cacheable(bytes(self.body))
         else:
-            await self._optimized_dynamic(message.get("body", b""))
+            await self._optimized_dynamic(bytes(self.body))
+
+    def _start_response(self, message: dict[str, Any]) -> None:
+        """Decide eligibility once using both request and response privacy rules."""
+        self.start = dict(message)
+        headers = parse_headers(message.get("headers", []))
+        request_headers = parse_headers(self.scope.get("headers", []))
+        self.cacheable = (request_cacheable(request_headers)
+                          and not any(self.scope.get(key) for key in ("user", "auth", "session"))
+                          and response_cacheable(headers, is_static=self.is_static))
+        can_opt = (self.booster.compress_dynamic and message.get("status") == 200
+                   and "no-transform" not in cache_directives(headers) | cache_directives(request_headers)
+                   and not any(key in headers for key in ("content-encoding", "content-range"))
+                   and not any(key in request_headers for key in ("range", "if-range")))
+        self.forwarding = (message.get("status") != 200 or message.get("trailers", False)
+                           or (not self.cacheable and not can_opt))
+
+    async def _collect_body(self, message: dict[str, Any]) -> bool:
+        """Buffer bounded public static files while forwarding dynamic streams promptly."""
+        headers = parse_headers(self.start.get("headers", []))
+        length = headers.get("content-length", "")
+        bounded_static = (self.is_static and self.cacheable and length.isdigit()
+                          and int(length) <= 2_000_000)
+        if (message["type"] != "http.response.body"
+                or (message.get("more_body") and not bounded_static)
+                or len(self.body) + len(message.get("body", b"")) > 2_000_000):
+            self.forwarding = True
+            await self.send(self.start)
+            if self.body:
+                await self.send({"type": "http.response.body", "body": bytes(self.body), "more_body": True})
+                self.body.clear()
+            await self.send(message)
+            return False
+        self.body.extend(message.get("body", b""))
+        return not message.get("more_body", False)
 
     async def _optimized_cacheable(self, raw_body: bytes) -> None:
         """Minify and compress public bytes, preserving unrelated response fields."""
@@ -64,7 +89,8 @@ class ASGIResponseOptimizer:
         body = booster.minifier.minify(raw_body, content_type) if booster.enable_minification else raw_body
         key = booster.cache_key(self.scope, request_headers)
         entry = booster.cache.set_if_current(self.generation, key, self.scope.get("path", "/"),
-                                             200, original, body, content_type)
+                                             200, original, body, content_type,
+                                             response_ttl(parse_headers(original), booster.cache.default_ttl))
         encoding = None
         if booster.enable_compression:
             body, encoding = booster.compressor.compress(body, content_type,
@@ -87,6 +113,9 @@ class ASGIResponseOptimizer:
             body, encoding = booster.compressor.compress(body, content_type,
                                                          request_headers.get("accept-encoding", ""))
         headers = representation_headers(original, body, None, encoding)
+        headers = [(key, value) for key, value in headers if key.lower() not in
+                   {b"cdn-cache-control", b"surrogate-control"}]
+        headers.extend([(b"cdn-cache-control", b"no-store"), (b"surrogate-control", b"no-store")])
         await self.send({**self.start, "headers": headers})
         await self.send({"type": "http.response.body", "body": body})
         booster.telemetry.record_request("GET", "[redacted]", 200, 0, False,
@@ -105,8 +134,6 @@ def representation_headers(original: list[tuple[bytes, bytes]], body: bytes,
         headers.append((b"etag", etag.encode("ascii")))
     if encoding:
         headers.append((b"content-encoding", encoding.encode("ascii")))
-    headers.append((b"cdn-cache-control", b"public, max-age=300, stale-while-revalidate=60"))
-    headers.append((b"surrogate-control", b"max-age=300"))
     headers.append((b"x-powered-by", b"booster"))
     return headers
 

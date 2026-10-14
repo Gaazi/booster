@@ -12,11 +12,11 @@ from starlette.requests import Request
 from starlette.responses import Response
 from starlette.testclient import TestClient
 
-from go_fast.booster import RocketBooster
-from go_fast.cache import FastMemoryCache
-from go_fast.http_policy import filtered_headers, response_cacheable
-from go_fast.minifier import minify_html, minify_css, minify_json
-from go_fast.telemetry import TelemetryTracker
+from booster.booster import RocketBooster
+from booster.cache import FastMemoryCache
+from booster.http_policy import filtered_headers, response_cacheable
+from booster.minifier import minify_html, minify_css, minify_json
+from booster.telemetry import TelemetryTracker
 from run import app, gateway, proxy
 
 
@@ -26,11 +26,11 @@ def local_client(application: Any=app) -> Any:
 
 
 @pytest.mark.parametrize("headers", [
-    {"Origin": "https://evil.test", "X-Go-Fast-Admin": "1"},
-    {"Origin": "http://127.0.0.1:5051", "X-Go-Fast-Admin": "1"},
-    {"Sec-Fetch-Site": "cross-site", "X-Go-Fast-Admin": "1"},
-    {"Sec-Fetch-Site": "same-site", "X-Go-Fast-Admin": "1"},
-    {"Origin": "null", "X-Go-Fast-Admin": "1"}, {},
+    {"Origin": "https://evil.test", "X-Booster-Admin": "1"},
+    {"Origin": "http://127.0.0.1:5051", "X-Booster-Admin": "1"},
+    {"Sec-Fetch-Site": "cross-site", "X-Booster-Admin": "1"},
+    {"Sec-Fetch-Site": "same-site", "X-Booster-Admin": "1"},
+    {"Origin": "null", "X-Booster-Admin": "1"}, {},
 ])
 def test_management_write_rejects_foreign_pages(headers: Any) -> None:
     """Upstream scripts and blind HTML forms cannot change management state."""
@@ -64,7 +64,7 @@ def test_gateway_blocks_foreign_fetches_and_blind_writes() -> None:
 def test_management_same_origin_and_private_headers() -> None:
     """Normal dashboard actions work and responses cannot be cached or framed."""
     response = local_client().post("/api/clear-cache", headers={"Origin": "http://127.0.0.1:5050",
-                                "Sec-Fetch-Site": "same-origin", "X-Go-Fast-Admin": "1"})
+                                "Sec-Fetch-Site": "same-origin", "X-Booster-Admin": "1"})
     assert response.status_code == 200
     assert response.headers["cache-control"] == "no-store"
     assert response.headers["x-frame-options"] == "DENY"
@@ -86,7 +86,7 @@ def test_gateway_is_separate_and_preserves_legacy_links() -> None:
 def test_target_validation(url: str) -> None:
     """Unsafe URLs fail before mutating the configured target."""
     original = proxy.target_url
-    response = local_client().post("/api/set-target", json={"url": url}, headers={"X-Go-Fast-Admin": "1"})
+    response = local_client().post("/api/set-target", json={"url": url}, headers={"X-Booster-Admin": "1"})
     assert response.status_code == 400
     assert proxy.target_url == original
 
@@ -205,7 +205,7 @@ def test_hop_headers_include_connection_named_fields() -> None:
 
 def test_minification_preserves_source_semantics() -> None:
     """Inline spacing, selectors, placeholder-like text and JSON precision survive."""
-    html = '<span>a</span> <span title="<!-- keep -->">b</span><go-fast-protected-0><script>safe()</script>'
+    html = '<span>a</span> <span title="<!-- keep -->">b</span><booster-protected-0><script>safe()</script>'
     css = 'a :hover { --gap:  ; content: "GOFASTSTRING0TOKEN"; }'
     assert minify_html(html) == html
     assert minify_css(css) == css

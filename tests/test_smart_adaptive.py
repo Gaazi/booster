@@ -9,8 +9,8 @@ from fastapi.responses import HTMLResponse, JSONResponse, Response
 from starlette.requests import Request
 from starlette.testclient import TestClient
 
-from go_fast.booster import RocketBooster
-from go_fast.http_policy import is_static_asset
+from booster.booster import RocketBooster
+from booster.http_policy import is_static_asset
 
 
 def test_is_static_asset_detection() -> None:
@@ -25,8 +25,8 @@ def test_is_static_asset_detection() -> None:
     assert is_static_asset("/") is False
 
 
-def test_static_asset_turbo_cached_with_cookies() -> None:
-    """Static assets should be cached and served from RAM even if client sends cookies."""
+def test_static_asset_cache_respects_cookies() -> None:
+    """Static-looking paths cannot share authenticated representations."""
     app = FastAPI()
     booster = RocketBooster(app)
     calls = []
@@ -39,18 +39,18 @@ def test_static_asset_turbo_cached_with_cookies() -> None:
 
     client = TestClient(booster)
 
-    # First request primes cache
     res1 = client.get("/static/app.css", headers={"cookie": "session=xyz123"})
     assert res1.status_code == 200
     assert len(calls) == 1
 
-    # Second request with different cookie hits RAM cache directly
     res2 = client.get("/static/app.css", headers={"cookie": "session=abc999"})
     assert res2.status_code == 200
-    assert len(calls) == 1  # Origin was not called again!
+    assert len(calls) == 2
+    assert booster.cache.count() == 0
 
     # Third request with matching ETag returns 304
-    etag = res2.headers.get("etag")
+    public = client.get("/static/app.css")
+    etag = public.headers.get("etag")
     assert etag is not None
     res3 = client.get("/static/app.css", headers={"if-none-match": etag})
     assert res3.status_code == 304

@@ -14,11 +14,11 @@ from fastapi.responses import Response, StreamingResponse
 from starlette.requests import Request
 from starlette.testclient import TestClient
 
-from go_fast.booster import RocketBooster
-from go_fast.cache import FastMemoryCache
-from go_fast.compressor import choose_encoding, compress_payload
-from go_fast.minifier import minify_html, minify_css
-from go_fast.proxy import SpeedProxyServer
+from booster.booster import RocketBooster
+from booster.cache import FastMemoryCache
+from booster.compressor import choose_encoding, compress_payload
+from booster.minifier import minify_html, minify_css
+from booster.proxy import SpeedProxyServer
 
 
 @pytest.mark.parametrize("header,expected", [
@@ -33,7 +33,7 @@ def test_encoding_quality(header: str, expected: str | None) -> None:
 def test_compression_reuses_work() -> None:
     """Repeated payloads reuse bounded compressed representations."""
     compress_payload.cache_clear()
-    with patch("go_fast.compressor.gzip.compress", wraps=gzip.compress) as compressor:
+    with patch("booster.compressor.gzip.compress", wraps=gzip.compress) as compressor:
         assert compress_payload(b"x" * 2048, "gzip") == compress_payload(b"x" * 2048, "gzip")
         assert compressor.call_count == 1
 
@@ -169,7 +169,7 @@ def test_attach_returns_active_cache() -> None:
 def test_invalid_target_rejected(url: str) -> None:
     """Dashboard accepts only well-formed HTTP base targets."""
     from run import app
-    assert TestClient(app, base_url="http://127.0.0.1:5050", client=("127.0.0.1", 12345)).post("/api/set-target", json={"url": url}, headers={"X-Go-Fast-Admin": "1"}).status_code == 400
+    assert TestClient(app, base_url="http://127.0.0.1:5050", client=("127.0.0.1", 12345)).post("/api/set-target", json={"url": url}, headers={"X-Booster-Admin": "1"}).status_code == 400
 
 
 def test_host_cache_isolation() -> None:

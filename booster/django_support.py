@@ -2,7 +2,7 @@
 
 from typing import Any, Callable
 
-from booster.http_policy import request_cacheable, response_cacheable, is_static_asset
+from booster.http_policy import request_cacheable, response_cacheable, response_ttl, is_static_asset
 from booster.cache import FastMemoryCache
 from booster.compressor import ResponseCompressor
 from booster.minifier import FastMinifier
@@ -31,8 +31,8 @@ class DjangoRocketMiddleware:
                 self.cache.clear()
         headers = {k.lower(): v for k, v in request.headers.items()}
         is_static = is_static_asset(request.path)
-        if (method != "GET" or (not is_static and (not request_cacheable(headers, is_static=False)
-                or getattr(getattr(request, "user", None), "is_authenticated", False)))):
+        if (method != "GET" or not request_cacheable(headers)
+                or getattr(getattr(request, "user", None), "is_authenticated", False)):
             return self.get_response(request)
         query = request.META.get("QUERY_STRING", "").encode("latin1")
         key = self.cache.make_key("GET:" + request.scheme + ":" + headers.get("host", ""), request.path, query)
@@ -69,7 +69,8 @@ class DjangoRocketMiddleware:
         response["Content-Length"] = str(len(response.content))
         entry = self.cache.set_if_current(generation, key, path, 200,
                                           [(k.encode("latin1"), v.encode("latin1")) for k, v in response.items()],
-                                          response.content, content_type)
+                                          response.content, content_type,
+                                          response_ttl(headers, self.cache.default_ttl))
         if entry:
             response["ETag"] = entry.etag
         return response

@@ -13,7 +13,7 @@ def test_dashboard_serving() -> None:
     client = TestClient(app, base_url="http://127.0.0.1:5050", client=("127.0.0.1", 12345))
     res = client.get("/")
     assert res.status_code == 200
-    assert "go_fast" in res.text
+    assert "booster" in res.text.lower()
 
 
 def test_stats_api() -> None:
@@ -30,7 +30,7 @@ def test_stats_api() -> None:
 def test_set_target_api() -> None:
     """Verify set target api."""
     client = TestClient(app, base_url="http://127.0.0.1:5050", client=("127.0.0.1", 12345))
-    res = client.post("/api/set-target", json={"url": "http://127.0.0.1:9000"}, headers={"X-Go-Fast-Admin": "1"})
+    res = client.post("/api/set-target", json={"url": "http://127.0.0.1:9000"}, headers={"X-Booster-Admin": "1"})
     assert res.status_code == 200
     assert proxy.target_url == "http://127.0.0.1:9000"
 
@@ -38,7 +38,7 @@ def test_set_target_api() -> None:
 def test_clear_cache_api() -> None:
     """Verify clear cache api."""
     client = TestClient(app, base_url="http://127.0.0.1:5050", client=("127.0.0.1", 12345))
-    res = client.post("/api/clear-cache", headers={"X-Go-Fast-Admin": "1"})
+    res = client.post("/api/clear-cache", headers={"X-Booster-Admin": "1"})
     assert res.status_code == 200
     assert res.json()["status"] == "cleared"
 

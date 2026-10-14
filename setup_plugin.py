@@ -10,7 +10,7 @@ import venv
 
 ROOT = Path(__file__).resolve().parent
 ENVIRONMENT = ROOT / ".venv"
-STAMP = ROOT / ".go-fast-setup.json"
+STAMP = ROOT / ".booster-setup.json"
 
 
 def environment_python() -> Path:
@@ -36,13 +36,13 @@ def setup_environment() -> Path:
         run_checked([str(interpreter), "-m", "pip", "install", "--upgrade", "pip>=26.2.1"])
         run_checked([str(interpreter), "-m", "pip", "install", "-e", str(ROOT)])
         STAMP.write_text(json.dumps({"requirements": signature}), encoding="utf-8")
-    run_checked([str(interpreter), "-c", "from go_fast.server import app, gateway"])
+    run_checked([str(interpreter), "-c", "from booster.server import app, gateway"])
     return interpreter
 
 
 def main() -> int:
     """Prepare the plugin, optionally check setup, and open the local dashboard."""
-    parser = argparse.ArgumentParser(description="One-click go_fast setup and launch")
+    parser = argparse.ArgumentParser(description="One-click booster setup and launch")
     parser.add_argument("--check", action="store_true", help="Prepare and verify without launching")
     parser.add_argument("--target", help="Trusted upstream base URL (otherwise auto-detect)")
     parser.add_argument("--no-browser", action="store_true", help="Do not open a browser")

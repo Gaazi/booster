@@ -8,8 +8,9 @@ from booster.django_support import DjangoRocketMiddleware
 from booster.minifier import FastMinifier
 from booster.proxy import SpeedProxyServer
 from booster.telemetry import TelemetryTracker
+from booster.cache_policy import CachePolicy
 
-__version__ = "1.0.0"
+__version__ = "1.0.1.dev1"
 
 # Direct top-level helper for maximum simplicity
 attach = RocketBooster.attach
@@ -25,4 +26,5 @@ __all__ = [
     "CDNManager",
     "CDNConfig",
     "attach",
+    "CachePolicy",
 ]

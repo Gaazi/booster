@@ -1,7 +1,7 @@
 """Unit tests for ResponseCompressor."""
 
 import gzip
-from go_fast.compressor import ResponseCompressor, choose_encoding, is_compressible
+from booster.compressor import ResponseCompressor, choose_encoding, is_compressible
 
 
 def test_is_compressible() -> None:

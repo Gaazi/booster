@@ -9,7 +9,10 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/)
 [![Node.js 18+](https://img.shields.io/badge/node-18+-green.svg)](https://nodejs.org/)
 
-`booster` is a zero-config, ultra-lightweight performance accelerator that brings **sub-millisecond (0.1ms - 2ms) response times** to APIs and web applications. It operates in pure process memory (RAM) with zero external databases or Redis requirements, making it drop-in compatible with every hosting environment from shared cPanel to enterprise cloud clusters.
+`booster` accelerates eligible public responses with bounded process-memory caching,
+optional minification and negotiated compression. It needs no external cache
+database or Redis. Performance depends on the application and hosting; verify
+middleware ordering, privacy and deployment compatibility before rollout.
 
 ---
 
@@ -27,9 +30,12 @@ We follow a strict 3-tier release pipeline to guarantee production stability:
 
 ## ⚡ Superpowers
 
+For reviewed installation, safe website integration and operational limits,
+read [the integration and review guide](docs/INTEGRATION.md).
+
 1. **Microsecond In-Memory Cache (RAM):**
    - High-throughput LRU cache with monotonic TTL expiration.
-   - Microsecond reads (`~0.001ms`), up to **50x faster than Redis** with zero network hop latency.
+   - RAM reads avoid an external cache database and its network round trip.
    - Automatic cache invalidation on write mutations (`POST`, `PUT`, `DELETE`, `PATCH`).
 
 2. **Adaptive Brotli & Gzip Compression:**
@@ -47,7 +53,7 @@ We follow a strict 3-tier release pipeline to guarantee production stability:
 5. **Smart Hybrid Update Engine:**
    - **On Dashboard Open**: Instantly checks for fresh releases on GitHub without stale data.
    - **Background Monthly Heartbeat**: Quiet periodic check for headless or background server deployments.
-   - **Auto-Patch**: Minor bug fixes auto-install silently without downtime.
+   - **Reviewed updates**: Auto-install is disabled by default; pinned consumers update after verification.
    - **Major Notification**: Visually displays upgrade banners in the dashboard and logs.
 
 ---

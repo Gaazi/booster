@@ -26,8 +26,7 @@ def request_cacheable(headers: dict[str, str], is_static: bool = False) -> bool:
     """Exclude personalized, conditional and explicitly uncached requests."""
     blocked = {"range", "if-range", "transfer-encoding",
                "if-match", "if-unmodified-since", "if-modified-since"}
-    if not is_static:
-        blocked = blocked | {"authorization", "cookie"}
+    blocked = blocked | {"authorization", "cookie"}
     control = cache_directives(headers)
     return (not blocked.intersection(headers)
             and headers.get("content-length", "0") == "0"
@@ -40,11 +39,12 @@ def response_cacheable(headers: dict[str, str], is_static: bool = False) -> bool
     control = cache_directives(headers)
     vary = {part.strip().lower() for part in headers.get("vary", "").split(",") if part.strip()}
     if is_static:
-        if any(key in headers for key in ("set-cookie", "content-range", "www-authenticate")):
+        if any(key in headers for key in ("set-cookie", "content-range", "www-authenticate",
+                                         "content-encoding", "age", "expires")):
             return False
-        if control.intersection({"private", "no-store"}):
+        if control.intersection({"private", "no-store", "no-cache", "no-transform", "must-revalidate"}):
             return False
-        return vary <= {"accept-encoding"}
+        return "public" in control and vary <= {"accept-encoding"} and response_ttl(headers, 300) > 0
 
     return ("public" in control and not any(key in headers for key in
             ("set-cookie", "content-encoding", "content-range", "www-authenticate"))
@@ -52,6 +52,18 @@ def response_cacheable(headers: dict[str, str], is_static: bool = False) -> bool
                                           "max-age", "s-maxage", "must-revalidate"})
             and "expires" not in headers and "age" not in headers
             and vary <= {"accept-encoding"})
+
+
+def response_ttl(headers: dict[str, str], default: float) -> float:
+    """Bound static cache retention by the shortest declared freshness limit."""
+    limits = [default]
+    for part in headers.get("cache-control", "").split(","):
+        name, separator, value = part.strip().partition("=")
+        if name.lower() in {"max-age", "s-maxage"}:
+            if not separator or not value.strip('"').isdigit():
+                return 0
+            limits.append(float(value.strip('"')))
+    return min(limits)
 
 
 def filtered_headers(headers: list[tuple[bytes, bytes]]) -> list[tuple[bytes, bytes]]:

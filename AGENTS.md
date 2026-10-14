@@ -7,6 +7,14 @@ Shared master SHA256: `e845210408af1e492c66a3599e1e4f4e15e5644a7ff049aac6807d4ff
 
 # Project Instructions: Booster
 
+## Booster integration reference
+
+Booster is the single reusable engine; consumers import it instead of copying
+its caching/compression code. Before integration or performance changes read
+[the integration and review guide](docs/INTEGRATION.md). It describes route
+selection, privacy boundaries, middleware order, installation and verification.
+For the next agent's prioritized work, read [the handoff](docs/NEXT_STEPS.md).
+
 ## Autonomous Agent Directives (MANDATORY FOR ALL AGENTS)
 
 > **ATTENTION VISITING AGENT**:
