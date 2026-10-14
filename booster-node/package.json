@@ -1,0 +1,24 @@
+{
+  "name": "booster-node",
+  "version": "1.0.0",
+  "description": "Ultra-fast zero-dependency caching, minification, and compression booster for Express, Next.js, and Node.js.",
+  "main": "src/index.js",
+  "type": "commonjs",
+  "scripts": {
+    "test": "node --test test/test.js"
+  },
+  "keywords": [
+    "booster",
+    "cache",
+    "compression",
+    "brotli",
+    "gzip",
+    "express",
+    "nextjs",
+    "fastify",
+    "minifier",
+    "cdn"
+  ],
+  "author": "Gaazi",
+  "license": "MIT"
+}
