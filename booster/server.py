@@ -27,7 +27,7 @@ async def lifespan(application: FastAPI) -> AsyncIterator[None]:
     await proxy.close()
 
 
-app = FastAPI(title="go_fast Accelerator", docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan)
+app = FastAPI(title="booster Accelerator", docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan)
 app.add_middleware(LocalAccessGuard)
 gateway = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
 gateway.add_middleware(LocalAccessGuard, management=False)
@@ -126,7 +126,7 @@ def launch_browser() -> None:
 
 def main() -> None:
     """Launch the local dashboard and acceleration gateway."""
-    parser = argparse.ArgumentParser(description="Start the local go_fast plugin")
+    parser = argparse.ArgumentParser(description="Start the local booster accelerator")
     parser.add_argument("--target", help="Trusted HTTP/HTTPS upstream base URL")
     parser.add_argument("--no-browser", action="store_true", help="Do not open a browser")
     arguments = parser.parse_args()

@@ -10,6 +10,9 @@ from go_fast.telemetry import TelemetryTracker
 
 __version__ = "1.0.0"
 
+# Direct top-level helper for maximum simplicity
+attach = RocketBooster.attach
+
 __all__ = [
     "RocketBooster",
     "FastMemoryCache",
@@ -18,4 +21,5 @@ __all__ = [
     "SpeedProxyServer",
     "DjangoRocketMiddleware",
     "TelemetryTracker",
+    "attach",
 ]

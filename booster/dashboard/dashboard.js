@@ -1,4 +1,4 @@
-// Dashboard interaction script for go_fast
+// Dashboard interaction script for booster
 
 function escapeHtml(value) {
   const element = document.createElement("span");

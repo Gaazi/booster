@@ -1,4 +1,4 @@
-"""Telemetry and performance metrics tracking for go_fast."""
+"""Telemetry and performance metrics tracking for booster."""
 
 import time
 from dataclasses import dataclass, field

@@ -29,3 +29,6 @@ include = ["booster*", "go_fast*"]
 [tool.setuptools.package-data]
 booster = ["dashboard/*.html", "dashboard/*.css", "dashboard/*.js"]
 go_fast = ["dashboard/*.html", "dashboard/*.css", "dashboard/*.js"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]

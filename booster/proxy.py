@@ -19,7 +19,7 @@ from booster.telemetry import TelemetryTracker
 from booster.local_security import validate_target
 from booster.proxy_transport import BodyTooLarge, outgoing_headers, request_body, upstream_body
 
-logger = logging.getLogger("go_fast.proxy")
+logger = logging.getLogger("booster.proxy")
 
 
 class RejectCookies(DefaultCookiePolicy):

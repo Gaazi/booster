@@ -9,15 +9,16 @@ def main() -> None:
     """Refresh both documentation artifacts from project source only."""
     lines = ["# Code Map", "", "Generated with `python refresh_docs.py`.", ""]
     edges = set()
-    for path in sorted(Path("go_fast").glob("*.py")) + [Path("run.py"), Path("setup_plugin.py")]:
+    for path in sorted(Path("booster").glob("*.py")) + sorted(Path("go_fast").glob("*.py")) + [Path("run.py"), Path("setup_plugin.py")]:
         tree = ast.parse(path.read_text(encoding="utf-8"))
         lines.extend([f"## {path.as_posix()}", ""])
         for node in ast.walk(tree):
             if isinstance(node, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
                 doc = (ast.get_docstring(node) or "Internal implementation.").splitlines()[0]
                 lines.append(f"- `{node.name}` (line {node.lineno}): {doc}")
-            if isinstance(node, ast.ImportFrom) and (node.module or "").startswith("go_fast."):
+            if isinstance(node, ast.ImportFrom) and (node.module or "").startswith(("booster.", "go_fast.")):
                 edges.add(f"  {path.stem} --> {node.module.split('.')[-1]}")
+
         lines.append("")
     lines.extend(["```mermaid", "graph TD", *sorted(edges), "```", ""])
     text = "\n".join(lines)
