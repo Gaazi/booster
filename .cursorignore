@@ -1,0 +1,27 @@
+# Cursor / IDE Agent Ignore: Files and directories excluded from AI background indexing
+
+# Virtual environments & dependencies
+.venv/
+venv/
+node_modules/
+.trash/
+
+# Build and packaging output
+build/
+dist/
+*.egg-info/
+go_fast.egg-info/
+
+# Python bytecode & cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.coverage
+
+# Git internals and logs
+.git/
+*.log
+*.tmp
+*.bak
