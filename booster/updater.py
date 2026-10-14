@@ -1,8 +1,8 @@
-"""Automated update detection, notification, and patch auto-updater for booster."""
-
+import asyncio
 import logging
 import os
 import re
+
 import subprocess
 import sys
 import time
@@ -122,3 +122,39 @@ def _build_update_message(current: str, latest: str, update_type: str, auto_appl
             return f"Bugfix patch v{latest} was automatically installed."
         return f"Bugfix patch v{latest} available. Run 'pip install --upgrade booster'."
     return f"New {update_type} version v{latest} available! Please update: pip install --upgrade booster"
+
+
+
+MONTHLY_INTERVAL_SECONDS = 30 * 86400  # 30 days
+
+
+async def run_monthly_heartbeat_check(interval: float = MONTHLY_INTERVAL_SECONDS) -> Dict[str, Any]:
+    """Execute low-frequency background check for passive/headless server instances."""
+    logger.info("Running periodic background update check for booster...")
+    info = await check_for_updates(force=True)
+
+    update_type = info.get("update_type", "none")
+    latest = info.get("latest_version", "")
+    if update_type == "patch":
+        if info.get("auto_applied"):
+            logger.info("✅ [booster] Automated patch v%s installed successfully.", latest)
+        else:
+            logger.info("⚡ [booster] Bugfix patch v%s available. Run: pip install --upgrade booster", latest)
+    elif update_type in ("minor", "major"):
+        logger.warning(
+            "🔔 [booster] New %s version v%s available! Please upgrade: pip install --upgrade booster",
+            update_type, latest
+        )
+    return info
+
+
+async def start_heartbeat_daemon(interval: float = MONTHLY_INTERVAL_SECONDS) -> None:
+    """Run monthly update check in a quiet background daemon loop."""
+    while True:
+        try:
+            await asyncio.sleep(interval)
+            await run_monthly_heartbeat_check(interval)
+        except asyncio.CancelledError:
+            break
+        except Exception as exc:
+            logger.debug("Background heartbeat check encountered: %s", exc)

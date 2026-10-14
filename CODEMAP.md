@@ -154,12 +154,14 @@ Generated with `python refresh_docs.py`.
 
 ## booster/updater.py
 
-- `parse_version` (line 22): Parse a semantic version string into a (major, minor, patch) tuple.
-- `classify_update` (line 35): Classify update level: 'none', 'patch', 'minor', or 'major'.
-- `fetch_latest_release` (line 49): Query GitHub releases API for the latest released version.
-- `apply_patch_update` (line 66): Safely apply a patch update in the background using pip.
-- `check_for_updates` (line 78): Check for available updates with caching and auto-patch application.
-- `_build_update_message` (line 115): Format a clear human-readable status message for the dashboard and CLI.
+- `parse_version` (line 23): Parse a semantic version string into a (major, minor, patch) tuple.
+- `classify_update` (line 36): Classify update level: 'none', 'patch', 'minor', or 'major'.
+- `fetch_latest_release` (line 50): Query GitHub releases API for the latest released version.
+- `apply_patch_update` (line 67): Safely apply a patch update in the background using pip.
+- `check_for_updates` (line 79): Check for available updates with caching and auto-patch application.
+- `_build_update_message` (line 116): Format a clear human-readable status message for the dashboard and CLI.
+- `run_monthly_heartbeat_check` (line 126): Execute low-frequency background check for passive/headless server instances.
+- `start_heartbeat_daemon` (line 146): Run monthly update check in a quiet background daemon loop.
 
 ## go_fast/__init__.py
 
