@@ -1,15 +1,19 @@
 # Project State
-Updated: 2026-10-14 18:41
+Updated: 2026-10-14 19:43
+
 ## Done
-- Fixed proxy gateway paths, mutation queries, cookie isolation and duplicate Set-Cookie preservation.
-- Hardened cache privacy, host isolation, header preservation, locking and monotonic TTL.
-- Fixed ASGI streaming, existing encodings, attach cache visibility and Django query cache keys.
-- Fixed compression quality negotiation; bounded reuse benchmark: 1000 gzip operations 0.033079s vs 0.000071s.
-- Protected HTML/CSS content; escaped dashboard log text; validated targets; parallelized port checks; fixed launcher and client shutdown.
-- Validation: compileall, git diff --check, node --check dashboard/dashboard.js and pytest: 44 passed (119 dependency deprecation warnings).
-- Generated CODEMAP.md and HTML docs using python refresh_docs.py.
+- Hardened cache privacy, host isolation, cookie separation, header preservation.
+- Added ASGI streaming (asgi_response), local_security, proxy_transport, server modules.
+- Moved dashboard into go_fast/dashboard/ package; setup_plugin.py for portable install.
+- Fixed compression quality negotiation and streaming encoding passthrough.
+- Added comprehensive security tests (admin access, cache, target validation, proxy, Django).
+- Validation: compileall clean, 97 tests passed / 1 skipped, git diff --check clean.
+- Updated README, COMMANDS, CODEMAP documentation.
+- All changes committed on `dev` branch (ada5ee7).
+
 ## Pending
-- No Git remote configured; push unavailable until a remote is supplied.
-- Django runtime integration, browser interaction and full application load/security testing remain unverified.
+- No Git remote configured; push unavailable until a remote URL is supplied.
+- Django runtime integration and full browser/load testing remain unverified.
+
 ## Next Step
-- Configure the Git remote and validate against the intended upstream application.
+- Supply a Git remote URL to push, then validate against the intended upstream application.
