@@ -14,9 +14,10 @@ import booster
 
 logger = logging.getLogger("booster.updater")
 
-CACHE_TTL_SECONDS = 21600  # 6 hours
+CACHE_TTL_SECONDS = 86400  # 24 hours (1 day)
 _cached_update_info: Optional[Dict[str, Any]] = None
 _last_check_timestamp: float = 0.0
+
 
 
 def parse_version(version_str: str) -> Tuple[int, int, int]:
