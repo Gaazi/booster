@@ -1,0 +1,10 @@
+.trash/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.pytest_cache/
+.coverage
+dist/
+build/

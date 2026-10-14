@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "go_fast"
+version = "1.0.0"
+description = "Universal Ultra-Fast Rocket Speed Caching, Compression, and Minification Engine for Python and Web Apps."
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+    { name = "go_fast team" }
+]
+dependencies = [
+    "fastapi>=0.110.0",
+    "uvicorn>=0.28.0",
+    "httpx>=0.27.0",
+    "brotli>=1.1.0"
+]
+
+[project.scripts]
+go-fast = "run:main"
+
+[tool.setuptools.packages.find]
+include = ["go_fast*"]
