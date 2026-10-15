@@ -1,8 +1,8 @@
 # Project State
-Updated: 2026-10-15 09:55
+Updated: 2026-10-15 10:02
 ## Done
-- Authored comprehensive features, architecture, and facilities reference in docs/FEATURES_AND_ARCHITECTURE.md, detailing in-memory caching, HTTP RFC 9111 compliance, mutation invalidation, compression, minification, CDN purging, proxy gateway, module map, and Mermaid request lifecycles.
-- Updated README.md and AGENTS.md with prominent references, summaries, and direct links to FEATURES_AND_ARCHITECTURE.md to enable instant agent onboarding without broad codebase scans.
+- Enhanced docs/FEATURES_AND_ARCHITECTURE.md with complete technology ecosystem matrix, 50/50 division of responsibilities table, and fast-track 3-step acceleration playbook.
+- Prominently integrated FEATURES_AND_ARCHITECTURE.md across README.md and AGENTS.md for instant agent and developer onboarding.
 - Lightweight dependency-free core and lazy server/cdn/brotli extras completed. Core supports Python 3.10+; current server extra requires 3.11+.
 - GitHub run 38673219129 succeeded for 9e3cf675: core Python 3.10, full server 3.11/3.14, Node 22/24, compressed packaging and clean installed-package checks.
 - Local full suite: 183 Python tests passed; Node checks passed 7 JS and 3 TS tests.

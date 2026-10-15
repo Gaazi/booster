@@ -18,7 +18,36 @@
 
 ---
 
-## 2. Complete Feature Catalogue (Facilities Provided)
+## 2. Technology Stack & Ecosystem Compatibility Matrix
+
+| Category | Supported Technologies | Integration Mode |
+| :--- | :--- | :--- |
+| **Python Ecosystem** | Python 3.10+, 3.11, 3.12, 3.13, 3.14<br>• **FastAPI**<br>• **Starlette**<br>• **Django** (WSGI)<br>• Any ASGI/WSGI web app | Native embedded middleware (`booster.attach` or `DjangoRocketMiddleware`) |
+| **Node.js Ecosystem** | Node.js 18+, 20+, 22+, 24+<br>• **Express.js**<br>• **Connect**<br>• Native HTTP servers | Native embedded middleware (`booster-node`) |
+| **Universal Upstream (Any Tech)** | **PHP / Laravel / WordPress**, **Ruby on Rails**, **Go**, **Java / Spring**, **ASP.NET Core**, **Rust** | Standalone Reverse Proxy Gateway (`SpeedProxyServer` on port `5051`) with GUI (`5050`) |
+| **Compression Codecs** | • **Brotli (`br`)**: Highest compression ratio (up to 85% payload savings)<br>• **Gzip (`gzip`)**: Zero-dependency standard library codec<br>• **Identity**: Client-negotiated uncompressed passthrough | Automatic negotiation via client `Accept-Encoding` header |
+| **Edge & CDN Networks** | • **Cloudflare** (API v4)<br>• **BunnyCDN** (Pull Zone API)<br>• **Fastly** (Service Cache API) | Standardized `CDN-Cache-Control` / `Surrogate-Control` headers + asynchronous purge APIs |
+| **Standard Protocols** | HTTP/1.1, HTTP/2, RFC 9111 (HTTP Caching), RFC 9110 (HTTP Semantics) | ETag generation, `If-None-Match` 304 validation, Hop-by-Hop stripping |
+
+---
+
+## 3. Division of Responsibilities: What Booster Does vs What Your Project Does
+
+> **Key Takeaway for Developers & Agents:** Booster handles roughly 50% of your performance and caching pipeline out of the box. Knowing exactly where Booster's boundary ends ensures you don't write redundant caching code or neglect core application security.
+
+| Functional Area | ⚡ What Booster Handles Automatically (Done for You) | 🛠️ What Your Application Project Still Must Do |
+| :--- | :--- | :--- |
+| **Response Caching** | • In-memory microsecond LRU cache (`FastMemoryCache`)<br>• Monotonic TTL management<br>• Bounded memory limits (`max_cache_bytes`)<br>• Automatic LRU entry eviction | • Designate public asset paths via `CachePolicy`<br>• Ensure static routes declare `Cache-Control: public` |
+| **Security & Privacy** | • Automatic bypass for cookies and `Authorization` headers<br>• Bypass for `no-store`, `private`, `no-cache`<br>• Stripping hop-by-hop headers (`Connection`, `Keep-Alive`)<br>• DNS rebinding protection on dashboard (`LocalAccessGuard`) | • User authentication (JWT, sessions, OAuth)<br>• Route-level authorization & role checks<br>• HTTPS / TLS certificate termination<br>• Rate limiting and anti-DDoS filters |
+| **Payload Optimization** | • Lossless UTF-8 JSON minification (`FastMinifier`)<br>• Client-negotiated Brotli and Gzip compression<br>• Compression threshold guards (skips tiny bodies) | • Frontend bundling (Vite, Webpack, esbuild)<br>• CSS/JS tree-shaking and asset minification<br>• Image optimization (WebP/AVIF generation, sizing) |
+| **Cache Freshness & Mutations** | • Automatic pre- and post-write invalidation on `POST`, `PUT`, `DELETE`, `PATCH`<br>• Path-prefix invalidation (`invalidate_path_prefix`) | • Adding version hashes/query params to updated static assets (e.g. `style.css?v=2`)<br>• Multi-process invalidation if using many independent workers |
+| **HTTP Validation** | • Fast binary SHA-256 ETag calculation<br>• Automatic `304 Not Modified` conditional response generation | • Determining business logic and database queries on cache miss |
+| **CDN & Edge Delivery** | • Emitting `CDN-Cache-Control` & `Surrogate-Control` headers<br>• Automated background edge purges for Cloudflare, Bunny, Fastly | • Configuring your domain's DNS to point to your CDN<br>• Setting up CDN API tokens in environment variables |
+| **Monitoring & Telemetry** | • Process-level hit ratio, total requests, bandwidth savings counters<br>• Local web dashboard GUI on port 5050 | • Distributed application tracing (e.g., OpenTelemetry, Prometheus, Datadog) |
+
+---
+
+## 4. Complete Feature Catalogue (Facilities Provided)
 
 Booster provides seven core architectural facilities:
 
@@ -77,7 +106,7 @@ Booster provides seven core architectural facilities:
 
 ---
 
-## 3. System Architecture & Workflows
+## 5. System Architecture & Workflows
 
 ### 3.1 Request Lifecycle: Cache Read Flow (GET/HEAD)
 
@@ -133,7 +162,7 @@ flowchart TD
 
 ---
 
-## 4. Module Map & Source Code Directory Structure
+## 6. Module Map & Source Code Directory Structure
 
 ```text
 booster/
@@ -179,9 +208,9 @@ scripts/                  # Distribution, bundle packaging, and CI verification
 
 ---
 
-## 5. Deployment & Integration Patterns
+## 7. Deployment & Integration Patterns
 
-### 5.1 Embedded ASGI (FastAPI / Starlette)
+### 7.1 Embedded ASGI (FastAPI / Starlette)
 ```python
 import booster
 from fastapi import FastAPI
@@ -202,7 +231,7 @@ engine = booster.attach(
 )
 ```
 
-### 5.2 Embedded Django (WSGI)
+### 7.2 Embedded Django (WSGI)
 In `settings.py`:
 ```python
 MIDDLEWARE = [
@@ -219,7 +248,7 @@ BOOSTER_CONFIG = {
 }
 ```
 
-### 5.3 Embedded Node.js / Express
+### 7.3 Embedded Node.js / Express
 ```javascript
 const express = require('express');
 const { booster } = require('booster-node');
@@ -231,7 +260,7 @@ app.use(booster({
 }));
 ```
 
-### 5.4 Standalone Proxy Gateway
+### 7.4 Standalone Proxy Gateway
 Accelerate any legacy or external upstream service without code changes:
 ```bash
 # Starts proxy gateway on port 5051 and dashboard on port 5050
@@ -240,7 +269,7 @@ booster --target http://127.0.0.1:8000
 
 ---
 
-## 6. Operational Boundaries & Golden Rules for Agents
+## 8. Operational Boundaries & Golden Rules for Agents
 
 When integrating or maintaining Booster, all agents must adhere to the following principles:
 
@@ -249,3 +278,37 @@ When integrating or maintaining Booster, all agents must adhere to the following
 3. **One Compression Owner:** If upstream or a CDN reverse proxy already performs Gzip/Brotli compression, disable Booster's compression (`enable_compression=False`) to avoid duplicate CPU work.
 4. **Preserve Range & Stream Requests:** Booster deliberately bypasses media streaming and HTTP 206 Partial Content requests; never attempt to force large audio/video streams into RAM cache.
 5. **Conservative Minification:** Do not replace `FastMinifier` with naive regular-expression string replacers on HTML/CSS; whitespace and comments can carry syntax meaning in modern web templates.
+
+---
+
+## 9. Fast-Track 3-Step Project Acceleration Playbook
+
+Follow these three steps to integrate Booster into any new or existing project and cut page delivery times dramatically:
+
+### Step 1: Install & Pin Booster
+Add the pinned commit or built distribution into your host project's requirements:
+```bash
+pip install "booster @ git+https://github.com/Gaazi/booster.git@dev"
+```
+
+### Step 2: Attach Middleware with Public Route Scope
+Wrap your app with `booster.attach()`, scoping cache admission to public static files (`/static/`) and unauthenticated public GET endpoints:
+```python
+import booster
+
+booster.attach(
+    app,
+    cache_policy=booster.CachePolicy(
+        include_paths=("/static/", "/api/public/"),
+        exclude_paths=("/api/public/live-status",),
+    ),
+    cache_ttl=300,
+    max_cache_bytes=16 * 1024 * 1024,
+)
+```
+
+### Step 3: Verify and Measure
+Run your integration tests:
+1. Confirm that `/static/style.css` returns an `ETag` and responds with `304 Not Modified` on re-request.
+2. Confirm that logged-in responses (`/dashboard`, `/profile`) carry `Cache-Control: private` or cookies and pass through untouched without any caching.
+3. Check CPU and memory usage using `engine.get_status()` to ensure memory usage stays strictly within your byte allocation.
