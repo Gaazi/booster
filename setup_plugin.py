@@ -34,7 +34,7 @@ def setup_environment() -> Path:
     if previous.get("requirements") != signature:
         print("Installing plugin dependencies...")
         run_checked([str(interpreter), "-m", "pip", "install", "--upgrade", "pip>=26.2.1"])
-        run_checked([str(interpreter), "-m", "pip", "install", "-e", str(ROOT)])
+        run_checked([str(interpreter), "-m", "pip", "install", "-e", f"{ROOT}[server,brotli]"])
         STAMP.write_text(json.dumps({"requirements": signature}), encoding="utf-8")
     run_checked([str(interpreter), "-c", "from booster.server import app, gateway"])
     return interpreter

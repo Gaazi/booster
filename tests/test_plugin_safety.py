@@ -128,13 +128,13 @@ def test_invalid_route_configuration_fails_early(paths):
         booster.CachePolicy(paths)
 
 
-def test_only_one_package_and_command_are_shipped():
+def test_only_one_package_and_command_are_shipped() -> None:
     """Package metadata exposes only the canonical Booster implementation."""
     import tomllib
     from pathlib import Path
     config = tomllib.loads((Path(__file__).parents[1] / "pyproject.toml").read_text())
     assert config["tool"]["setuptools"]["packages"]["find"]["include"] == ["booster*"]
-    assert config["project"]["scripts"] == {"booster": "booster.server:main"}
+    assert config["project"]["scripts"] == {"booster": "booster.cli:main"}
 
 
 def test_duplicate_attachment_fails_before_serving():

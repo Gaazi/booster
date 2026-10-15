@@ -27,6 +27,22 @@ starts no dashboard, proxy, port scan, update worker or separate process.
 Standalone update checks do not auto-install by default; keep
 `BOOSTER_AUTO_UPDATE=false` for reviewed deployments.
 
+The default installation contains the core cache/compression engine without
+server dependencies. The host provides its own ASGI/Django framework. Optional
+extras are `server` (standalone dashboard/proxy and HTTP client), `cdn` (HTTP
+client for CDN integration), and `brotli` (optional codec). Core GZip uses the
+standard library; without Brotli, compatible requests can still use GZip.
+For a pinned standalone installation, use:
+
+```text
+booster[server,brotli] @ git+https://github.com/Gaazi/booster.git@FULL_REVIEWED_COMMIT
+```
+
+Existing top-level optional API names load lazily; requesting the proxy/CDN
+without its dependencies gives an installation hint. The plugin launcher
+installs its own required extras. See [compressed builds](BUILDS.md) for
+verified wheel/Node downloads and [use cases](USE_CASES.md) for choosing scope.
+
 ## FastAPI example
 
 ```python

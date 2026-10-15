@@ -1,0 +1,171 @@
+name: Verified build
+
+on:
+  push:
+    branches: [dev, demo]
+  pull_request:
+    branches: [dev, demo]
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: verified-build-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  plan:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      run_id: ${{ steps.previous.outputs.run_id }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - id: previous
+        name: Find an exact-commit verified dev build
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CI_EVENT: ${{ github.event_name }}
+          CI_BRANCH: ${{ github.ref_name }}
+          CI_REPOSITORY: ${{ github.repository }}
+          CI_SHA: ${{ github.sha }}
+        run: python -m scripts.ci_runs
+
+  python-tests:
+    needs: plan
+    if: needs.plan.outputs.run_id == ''
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.10', '3.14']
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - run: python -m pip install '.[server,cdn,brotli]' pytest 'Django>=4.2,<7'
+      - run: python -m pip check
+      - run: python -m pytest -q
+
+  node-tests:
+    needs: plan
+    if: needs.plan.outputs.run_id == ''
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['22', '24']
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: ${{ matrix.node }}
+      - run: node --test booster-node/test/test.js
+      - if: matrix.node == '24'
+        run: node --test booster-node/test/test-ts.ts
+
+  build:
+    needs: [plan, python-tests, node-tests]
+    if: needs.plan.outputs.run_id == ''
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.14'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+      - run: python -m pip install build
+      - run: python -m build --outdir dist/packages
+      - run: npm pack ./booster-node --pack-destination dist/packages --ignore-scripts
+      - name: Create compressed bundle and manifest
+        env:
+          BUILD_SHA: ${{ github.sha }}
+        run: python -m scripts.build_bundle create dist/packages --sha "$BUILD_SHA"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: booster-build-${{ github.sha }}
+          path: dist/booster-*.zip
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0
+
+  verified-build:
+    name: Verified packages
+    needs: [plan, build]
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Require a successful new build or a verified dev source
+        env:
+          PLAN_RESULT: ${{ needs.plan.result }}
+          BUILD_RESULT: ${{ needs.build.result }}
+          REUSE_RUN: ${{ needs.plan.outputs.run_id }}
+        run: |
+          test "$PLAN_RESULT" = success
+          if [ -z "$REUSE_RUN" ]; then test "$BUILD_RESULT" = success; fi
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.14'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: booster-build-${{ github.sha }}
+          path: dist/download
+          github-token: ${{ github.token }}
+          run-id: ${{ needs.plan.outputs.run_id || github.run_id }}
+      - name: Verify commit and checksums before unpacking
+        env:
+          BUILD_SHA: ${{ github.sha }}
+        run: python -m scripts.build_bundle verify "dist/download/booster-$BUILD_SHA.zip" --sha "$BUILD_SHA" --extract-to dist/verified
+      - name: Install Python wheel outside the source checkout
+        run: |
+          python -m venv "$RUNNER_TEMP/booster-smoke"
+          "$RUNNER_TEMP/booster-smoke/bin/python" -m pip install dist/verified/*.whl
+          "$RUNNER_TEMP/booster-smoke/bin/python" -m pip check
+          "$RUNNER_TEMP/booster-smoke/bin/python" -I -c "import booster; from importlib.resources import files; assert callable(booster.attach); assert files('booster').joinpath('dashboard/index.html').is_file(); assert files('booster').joinpath('dashboard/style.css').is_file(); assert files('booster').joinpath('dashboard/dashboard.js').is_file()"
+      - name: Check optional standalone installation from the same wheel
+        run: |
+          wheels=(dist/verified/*.whl)
+          "$RUNNER_TEMP/booster-smoke/bin/python" -m pip install "${wheels[0]}[server,cdn,brotli]"
+          "$RUNNER_TEMP/booster-smoke/bin/python" -m pip check
+          "$RUNNER_TEMP/booster-smoke/bin/python" -I -c "from booster import SpeedProxyServer, CDNManager; from booster.server import app; assert callable(SpeedProxyServer); assert callable(CDNManager); assert app is not None"
+      - name: Install Node archive outside the source checkout
+        run: |
+          mkdir "$RUNNER_TEMP/booster-node-smoke"
+          npm install --prefix "$RUNNER_TEMP/booster-node-smoke" --ignore-scripts --no-audit --no-fund dist/verified/*.tgz
+          cd "$RUNNER_TEMP/booster-node-smoke"
+          node -e "const b=require('booster-node'); if(typeof b.booster!=='function'||typeof b.FastMemoryCache!=='function') throw Error('Invalid Node package')"
+      - name: Report the verified compressed download
+        env:
+          BUILD_SHA: ${{ github.sha }}
+          SOURCE_RUN: ${{ needs.plan.outputs.run_id || github.run_id }}
+        run: |
+          echo "Verified compressed build for commit $BUILD_SHA" >> "$GITHUB_STEP_SUMMARY"
+          echo "Download booster-build-$BUILD_SHA from Actions run $SOURCE_RUN." >> "$GITHUB_STEP_SUMMARY"

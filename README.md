@@ -33,6 +33,12 @@ We follow a strict 3-tier release pipeline to guarantee production stability:
 For reviewed installation, safe website integration and operational limits,
 read [the integration and review guide](docs/INTEGRATION.md).
 
+Core caching/GZip does not require the standalone server's libraries. The
+dashboard/proxy uses the optional `server` extra; CDN HTTP calls and Brotli use
+the `cdn` and `brotli` extras. Pin a reviewed revision as described in the guide.
+See [verified compressed builds](docs/BUILDS.md) for ready-to-install Python/Node
+packages and [workload recommendations](docs/USE_CASES.md) before enabling caching.
+
 1. **Microsecond In-Memory Cache (RAM):**
    - High-throughput LRU cache with monotonic TTL expiration.
    - RAM reads avoid an external cache database and its network round trip.

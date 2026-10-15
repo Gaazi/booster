@@ -34,7 +34,7 @@ def test_setup_installs_once_and_reuses_environment(monkeypatch: pytest.MonkeyPa
     assert setup_plugin.setup_environment() == interpreter
     installs = [call.args[0] for call in runner.call_args_list if "install" in call.args[0]]
     assert len(installs) == 2
-    assert installs[-1][-1] == str(root)
+    assert installs[-1][-1] == f"{root}[server,brotli]"
     runner.reset_mock()
     setup_plugin.setup_environment()
     assert runner.call_count == 1 and "install" not in runner.call_args.args[0]

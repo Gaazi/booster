@@ -14,6 +14,11 @@ and no-transform instructions are respected. Update checks are read-only unless
 the operator explicitly opts in. Full integration guidance is in
 [INTEGRATION.md](INTEGRATION.md); engine locations are in [CODEMAP.md](../CODEMAP.md).
 
+Core/server packaging is now separated with lazy optional exports. CI builds
+compressed wheel/source/Node packages after tests and verifies installation;
+see [BUILDS.md](BUILDS.md). Workload-specific guidance and research are in
+[USE_CASES.md](USE_CASES.md). Runtime/production performance remains to be measured.
+
 ## Next work, in priority order
 
 Primary product priority: the personalized invitation delivered to a guest must
@@ -28,11 +33,9 @@ and local measurements. Live/physical-phone performance is still unverified.
    asset routes, retain outer security/host/CORS middleware and one compression
    owner. Test private pages, ranges, signed uploads, cache hits and decoded bytes.
    Never copy the engine or mark private pages public to improve hit counts.
-2. **Lightweight distribution:** move standalone server/dashboard dependencies
-   into an optional `server` extra, with lazy top-level exports. Preserve current
-   public APIs. Verify that core attachment installs and imports without FastAPI,
-   Uvicorn or HTTPX when the host supplies its ASGI framework. Test standalone
-   installation separately; do not merely remove dependencies required on import.
+2. **Lightweight distribution:** optional `server`, `cdn` and `brotli` extras and
+   lazy top-level exports are implemented. Maintain core-only import/install
+   and standalone package regressions when extending public APIs.
    Per-host `max_cache_bytes` is already available; Invite uses an 8 MiB cap.
 3. **Node parity:** independently audit Node cache admission, encoded bodies,
    credential/range bypass, Vary and TTL semantics against the Python privacy

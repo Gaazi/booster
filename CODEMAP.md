@@ -4,6 +4,7 @@ Generated with `python refresh_docs.py`.
 
 ## booster/__init__.py
 
+- `__getattr__` (line 31): Load optional integrations only when requested, preserving public exports.
 
 ## booster/asgi_response.py
 
@@ -71,6 +72,10 @@ Generated with `python refresh_docs.py`.
 - `_purge_cloudflare` (line 89): Purge Cloudflare Zone Cache via Client v4 API.
 - `_purge_bunny` (line 99): Purge BunnyCDN Pull Zone Cache.
 - `_purge_fastly` (line 106): Purge Fastly Service Cache.
+
+## booster/cli.py
+
+- `main` (line 4): Delegate to the server without loading its dependencies on core import.
 
 ## booster/compressor.py
 
@@ -180,6 +185,34 @@ Generated with `python refresh_docs.py`.
 - `run_monthly_heartbeat_check` (line 133): Execute low-frequency background check for passive/headless server instances.
 - `start_heartbeat_daemon` (line 153): Run monthly update check in a quiet background daemon loop.
 
+## scripts/__init__.py
+
+
+## scripts/build_bundle.py
+
+- `check_sha` (line 11): Accept only a full lowercase Git commit identifier.
+- `package_kind` (line 18): Reject unsafe names and identify the three expected distributions.
+- `check_packages` (line 31): Require exactly one wheel, source distribution and Node archive.
+- `create_bundle` (line 39): Create a compressed download containing distributions and their hashes.
+- `read_manifest` (line 55): Validate commit provenance and the archive's complete file inventory.
+- `verify_bundle` (line 76): Check every package hash before optionally writing verified files.
+- `main` (line 91): Create a bundle or verify a downloaded build from the command line.
+
+## scripts/ci_runs.py
+
+- `api` (line 15): Read repository metadata with the authenticated GitHub CLI.
+- `matching_run` (line 26): Reject failed, PR, fork, other-branch and different-commit builds.
+- `find_build` (line 40): Return a successful dev run with an available exact-commit artifact.
+- `main` (line 58): Reuse dev artifacts only for a demo push of the identical commit.
+
+## scripts/promote_demo.py
+
+- `command` (line 14): Run an exact command in the repository and surface any failure.
+- `check_checkout` (line 24): Require clean dev and aligned branches before a fast-forward promotion.
+- `verified_download` (line 42): Download and validate the trusted exact-commit compressed dev build.
+- `promote` (line 60): Verify first, then use the shared merge helper and immediately push demo.
+- `main` (line 84): Preview promotion unless this invocation explicitly authorizes it.
+
 ## run.py
 
 
@@ -209,6 +242,7 @@ graph TD
   booster --> http_policy
   booster --> minifier
   booster --> telemetry
+  cli --> server
   django_support --> cache
   django_support --> compressor
   django_support --> http_policy

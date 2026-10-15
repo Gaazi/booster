@@ -1,12 +1,13 @@
 # Project State
-Updated: 2026-10-15 00:20
+Updated: 2026-10-15 08:14
 ## Done
-- Unified Booster-only Python engine/command/dashboard; private cache safeguards, route policy, shared owner-status API and configurable byte budget committed/pushed on dev. Invite pins engine revision a116e31.
-- Final Python suite: 146 passed. Prior unchanged Node suite: 7 passed. Relevant syntax/function-size audits, pip check, source map and diff checks passed.
-- Invite integration completed/pushed on dev at a7aa413: owner-only module in existing dashboard, 8 MiB asset cache, 358 tests, browser 360px/1000px checks and privacy regressions passed.
-- Prioritized handoff now states that personalized guest-card loading comes first, without skipping styles/music/animations or shared-caching private card HTML.
+- Reusable engine safeguards, status API and configurable RAM budget remain intact. Invite integration was recorded at a7aa413 with 358 app tests and browser checks; Invite work belongs to the other agent.
+- Completed handed-off lightweight packaging: dependency-free core, lazy optional APIs and server/cdn/brotli extras; launcher installs its required extras.
+- Implemented verified compressed wheel/source/Node bundles, exact-commit dev artifact reuse on demo, fail-closed CI and an explicitly authorized fast-forward promotion command.
+- Local checks: 181 Python tests, 7 Node JS and 3 native TS tests passed; pip check, syntax, changed-function/YAML audit and diff check passed. Wheel/core/server and Node archive installation probes passed.
+- Added researched workload guidance in docs/USE_CASES.md and build/promotion instructions in docs/BUILDS.md.
 ## Pending
-- Optional server/dashboard dependencies, independent Node policy parity review and coordinated multi-worker invalidation remain follow-ups.
-- Production and physical-phone/network validation, plus Go/Rust phases, remain pending; no demo/main promotion or production change performed.
+- First GitHub CI run will be inspected after pushing this task. No demo/main promotion, deployment or repository-protection setting change has been performed.
+- Independent Node parity review, multi-worker invalidation, physical-phone/production measurements and Go/Rust phases remain follow-ups.
 ## Next Step
-- Prioritize real-phone personalized-card measurements, then implement optional core/server packaging with import/install regressions on dev.
+- Validate the remote CI run and hand off the verified compressed build; prioritize measured personalized-card performance without sharing private HTML.

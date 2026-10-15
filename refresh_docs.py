@@ -9,7 +9,8 @@ def main() -> None:
     """Refresh both documentation artifacts from project source only."""
     lines = ["# Code Map", "", "Generated with `python refresh_docs.py`.", ""]
     edges = set()
-    for path in sorted(Path("booster").glob("*.py")) + [Path("run.py"), Path("setup_plugin.py")]:
+    paths = sorted(Path("booster").glob("*.py")) + sorted(Path("scripts").glob("*.py"))
+    for path in paths + [Path("run.py"), Path("setup_plugin.py")]:
         tree = ast.parse(path.read_text(encoding="utf-8"))
         lines.extend([f"## {path.as_posix()}", ""])
         for node in ast.walk(tree):
