@@ -3,8 +3,8 @@
 > **Universal Ultra-Fast Caching, Minification, and Compression Engine for Python, Node.js, and Web Apps.**
 
 [![Stable Release](https://img.shields.io/badge/release-v1.0.0%20(Stable)-brightgreen.svg)](https://github.com/Gaazi/booster/releases/tag/v1.0.0)
-[![Python Tests](https://img.shields.io/badge/python%20tests-109%20passed-brightgreen.svg)](https://github.com/Gaazi/booster)
-[![Node Tests](https://img.shields.io/badge/node%20tests-5%20passed-brightgreen.svg)](https://github.com/Gaazi/booster)
+[![Python Tests](https://img.shields.io/badge/python%20tests-183%20passed-brightgreen.svg)](https://github.com/Gaazi/booster)
+[![Node Tests](https://img.shields.io/badge/TypeScript%20tests-31%20passed-brightgreen.svg)](https://github.com/Gaazi/booster)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/)
 [![Node.js 18+](https://img.shields.io/badge/node-18+-green.svg)](https://nodejs.org/)
@@ -55,7 +55,8 @@ Pin a reviewed revision as described in the [Integration Guide](docs/INTEGRATION
    - Automatic client quality negotiation and streaming fallback.
 
 3. **On-the-fly Minification:**
-   - Instant whitespace, comment, and redundant character stripping for HTML, CSS, JavaScript, and JSON.
+   - Conservative JSON whitespace minification; HTML/CSS formatting is preserved.
+   - Frontend bundling and CSS/JavaScript minification remain build-tool responsibilities.
 
 4. **Universal Multi-CDN Integration:**
    - Automatically attaches `CDN-Cache-Control` and `Surrogate-Control` headers.
@@ -172,7 +173,7 @@ If you want to accelerate an existing website without editing code:
 
 ## 🧪 Comprehensive Verification & Tests
 
-### Run Python Test Suite (109 Tests):
+### Run Python Test Suite:
 ```bash
 pytest
 ```

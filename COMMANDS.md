@@ -6,8 +6,10 @@ Run from the project root directory.
 | :--- | :--- |
 | One-click setup & launch | `.\start.bat` |
 | CLI accelerator launch | `booster --target http://127.0.0.1:8000` |
-| Run full Python tests (109 tests) | `pytest` |
+| Run full Python tests | `python -m pytest -q` |
 | Run Node.js tests (TypeScript native) | `node --test booster-node/test/test-ts.ts` |
+| Build Node runtime from canonical TypeScript | `npm ci --prefix booster-node --ignore-scripts` then `npm run build --prefix booster-node` |
+| Check generated public Node types | `npm run check:types --prefix booster-node` |
 | Force check updates | `curl http://127.0.0.1:5050/api/check-update` |
 | Clear cache & trigger CDN purge | `curl -X POST -H "X-Booster-Admin: 1" http://127.0.0.1:5050/api/clear-cache` |
 | Refresh docs & CODEMAP | `python refresh_docs.py` |

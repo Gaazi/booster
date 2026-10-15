@@ -2,8 +2,9 @@ import test from "node:test";
 import assert from "node:assert";
 import http from "node:http";
 import zlib from "node:zlib";
-import { booster, FastMemoryCache, ResponseCompressor, FastMinifier, isStaticAsset } from "../src/index.ts";
+import { booster, FastMemoryCache, ResponseCompressor, FastMinifier, isStaticAsset } from "./engine.ts";
 import type { BoosterOptions } from "../src/index.ts";
+import { request as rawRequest, fixture } from "./cache-regressions.ts";
 
 test("FastMemoryCache - set, get, etag, and expiry", async () => {
   const cache = new FastMemoryCache(10, 0.05); // 50ms TTL
@@ -58,49 +59,30 @@ test("FastMinifier - HTML, CSS, and JSON minification", () => {
   const minifier = new FastMinifier();
 
   const html = minifier.minify("<div>   <!-- c -->   <p>Hello</p>   </div>", "text/html");
-  assert.strictEqual(html.toString(), "<div><p>Hello</p></div>");
+  assert.strictEqual(html.toString(), "<div>   <!-- c -->   <p>Hello</p>   </div>");
 
   const css = minifier.minify("/* c */ body {  margin: 0px ; }", "text/css");
-  assert.strictEqual(css.toString(), "body{margin:0px;}");
+  assert.strictEqual(css.toString(), "/* c */ body {  margin: 0px ; }");
 
   const json = minifier.minify('{\n  "status": "ok"\n}', "application/json");
   assert.strictEqual(json.toString(), '{"status":"ok"}');
 });
 
-test("booster middleware integration - caching, 304, and CDN headers", async () => {
-  const middleware = booster();
-
-  const server = http.createServer((req, res) => {
-    middleware(req, res, () => {
-      res.setHeader("Content-Type", "application/json");
-      res.end(JSON.stringify({ message: "rocket" }));
-    });
+test("booster middleware integration - caching, 304, and CDN headers", async t => {
+  const url = await fixture(t, (_req, res) => {
+    res.setHeader("Content-Type", "application/json");
+    res.setHeader("Cache-Control", "public, max-age=60");
+    res.end(JSON.stringify({message: "rocket"}));
   });
-
-  await new Promise<void>((r) => server.listen(0, "127.0.0.1", () => r()));
-  const port = (server.address() as any).port;
-
-  // 1st request -> prime cache
-  const res1 = await fetch(`http://127.0.0.1:${port}/api/data`);
-  assert.strictEqual(res1.status, 200);
-  assert.ok(res1.headers.get("etag"));
-  assert.ok(res1.headers.get("cdn-cache-control"));
-  const etag = res1.headers.get("etag")!;
-
-  // 2nd request -> cached + 304 Not Modified
-  const res2 = await fetch(`http://127.0.0.1:${port}/api/data`, {
-    headers: { "if-none-match": etag },
-  });
-  assert.strictEqual(res2.status, 304);
-
-  // Authenticated request -> bypasses cache
-  const resAuth = await fetch(`http://127.0.0.1:${port}/api/data`, {
-    headers: { authorization: "Bearer secret-token" },
-  });
-  assert.strictEqual(resAuth.status, 200);
-
-  if ((server as any).closeAllConnections) (server as any).closeAllConnections();
-  server.close();
+  const first = await rawRequest(url);
+  assert.strictEqual(first.status, 200);
+  assert.ok(first.headers.etag);
+  assert.ok(first.headers["cdn-cache-control"]);
+  const conditional = await rawRequest(url, {"if-none-match": first.headers.etag});
+  assert.strictEqual(conditional.status, 304);
+  const authenticated = await rawRequest(url, {authorization: "Bearer secret-token"});
+  assert.strictEqual(authenticated.status, 200);
+  assert.strictEqual(authenticated.headers["cdn-cache-control"], "no-store");
 });
 
 test("booster-node - private responses are never cached or leaked", async () => {
@@ -249,36 +231,20 @@ test("booster-node - host isolation prevents cross-domain cache collision", asyn
   server.close();
 });
 
-test("booster-node - static assets cached and accelerated", async () => {
-  const middleware = booster();
+test("booster-node - static assets cached and accelerated", async t => {
   let calls = 0;
-
-  const server = http.createServer((req, res) => {
-    middleware(req, res, () => {
-      calls++;
-      res.setHeader("Content-Type", "text/css");
-      res.setHeader("Cache-Control", "public, max-age=31536000");
-      res.end("body { background: #000; }");
-    });
+  const url = await fixture(t, (_req, res) => {
+    calls++;
+    res.setHeader("Content-Type", "text/css");
+    res.setHeader("Cache-Control", "public, max-age=31536000");
+    res.end("body { background: #000; }");
   });
-
-  await new Promise<void>((r) => server.listen(0, "127.0.0.1", () => r()));
-  const port = (server.address() as any).port;
-
-  const res1 = await fetch(`http://127.0.0.1:${port}/static/bundle.css`, {
-    headers: { "cookie": "session=xyz" },
-  });
-  assert.strictEqual(res1.status, 200);
+  const first = await rawRequest(url);
+  assert.strictEqual(first.status, 200);
+  const hit = await rawRequest(url);
+  assert.strictEqual(hit.status, 200);
   assert.strictEqual(calls, 1);
-
-  const res2 = await fetch(`http://127.0.0.1:${port}/static/bundle.css`, {
-    headers: { "cookie": "session=different" },
-  });
-  assert.strictEqual(res2.status, 200);
-  assert.strictEqual(calls, 1); // Served directly from memory!
-
-  if ((server as any).closeAllConnections) (server as any).closeAllConnections();
-  server.close();
+  assert.deepStrictEqual(first.body, hit.body);
 });
 
 test("TypeScript native - FastMemoryCache type check", () => {

@@ -224,6 +224,84 @@ Generated with `python refresh_docs.py`.
 - `setup_environment` (line 26): Install dependencies only on first use or when project requirements change.
 - `main` (line 43): Prepare the plugin, optionally check setup, and open the local dashboard.
 
+## booster-node/src/cache.ts
+
+- `CacheHeaders` (line 5): TypeScript declaration.
+- `CacheEntry` (line 7): TypeScript declaration.
+- `constructor` (line 17): Copy bytes so origin buffers cannot mutate a stored representation.
+- `computeETag` (line 28): Generate a weak validator that remains valid across negotiated encodings.
+- `ageSeconds` (line 33): Return elapsed monotonic time independently of system clock adjustments.
+- `isExpired` (line 36): Expire at the exact configured lifetime boundary.
+- `FastMemoryCache` (line 39): TypeScript declaration.
+- `constructor` (line 48): Validate explicit zero budgets instead of silently replacing them with defaults.
+- `makeKey` (line 58): Preserve the existing public key API without ambiguous delimiter collisions.
+- `get` (line 63): Read a fresh entry and refresh its LRU position.
+- `set` (line 73): Admit only entries fitting both budgets while retaining the return-value API.
+- `delete` (line 89): Update byte accounting whenever an entry leaves the cache.
+- `invalidatePrefix` (line 97): Invalidate matching paths without changing unaffected entries.
+- `clear` (line 106): Clear all cache indexes and release the resident body budget.
+- `size` (line 109): Report the number of resident entries.
+
+## booster-node/src/compressor.ts
+
+- `CompressionResult` (line 20): TypeScript declaration.
+- `isCompressible` (line 25): TypeScript declaration.
+- `chooseEncoding` (line 35): TypeScript declaration.
+- `compressBuffer` (line 50): TypeScript declaration.
+- `ResponseCompressor` (line 65): TypeScript declaration.
+- `constructor` (line 68): TypeScript declaration.
+- `compress` (line 72): TypeScript declaration.
+
+## booster-node/src/engine-types.ts
+
+- `BoosterOptions` (line 6): TypeScript declaration.
+- `EngineState` (line 19): TypeScript declaration.
+- `ResponseContext` (line 25): TypeScript declaration.
+
+## booster-node/src/header-guard.ts
+
+- `protectedHeaders` (line 5): Preserve both supported writeHead header forms while replacing edge directives.
+- `guardExplicitHeaders` (line 22): Fail closed on manual writeHead; automatic verified end headers remain intact.
+
+## booster-node/src/index.ts
+
+- `isStaticAsset` (line 18): Classify assets for callers; extensions never override credential privacy.
+- `trackMutation` (line 25): Clear before/after mutations and invalidate older in-flight capture contexts.
+- `invalidate` (line 27): TypeScript declaration.
+- `booster` (line 33): Construct one bounded engine while preserving the existing middleware API.
+- `return` (line 38): TypeScript declaration.
+
+## booster-node/src/minifier.ts
+
+- `minifyHTML` (line 5): Preserve formatting and quoted content; use a frontend build tool for HTML.
+- `minifyCSS` (line 10): Preserve CSS strings, custom properties and significant whitespace.
+- `minifyJSON` (line 15): Remove whitespace outside JSON strings without rounding numbers or rewriting keys.
+- `FastMinifier` (line 25): TypeScript declaration.
+- `minify` (line 26): TypeScript declaration.
+
+## booster-node/src/policy.ts
+
+- `responseBlocksCache` (line 10): Retain outer host privacy decisions on hits as well as misses.
+- `directives` (line 18): Parse directives without substring matching or ambiguous duplicate values.
+- `requestAllowed` (line 28): Check credentials and caller revalidation before any shared lookup.
+- `originAge` (line 38): Include already-aged origin responses when computing their remaining lifetime.
+- `responseTTL` (line 47): Bound RAM TTL by all origin freshness policies and prohibit private variants.
+- `snapshotHeaders` (line 68): Save original end-to-end headers without connection-specific transport fields.
+- `edgePolicy` (line 81): Protect private and uncacheable replies from edge storage.
+
+## booster-node/src/response.ts
+
+- `varyEncoding` (line 10): Merge encoding variation without erasing the host's existing Vary fields.
+- `canTransform` (line 17): Skip encoded, partial, explicitly immutable or oversized transformations.
+- `compress` (line 27): Negotiate compression consistently on cold responses and warm hits.
+- `varyEncoding` (line 30): TypeScript declaration.
+- `storeBody` (line 40): Store immutable origin bytes only while the request's mutation epoch matches.
+- `edgePolicy` (line 48): TypeScript declaration.
+- `serveCached` (line 53): Replay validators and security headers, including body-free conditional hits.
+- `edgePolicy` (line 61): TypeScript declaration.
+- `interceptResponse` (line 76): Preserve stream/callback behavior without retaining any streamed chunks.
+- `guardExplicitHeaders` (line 80): TypeScript declaration.
+
 ```mermaid
 graph TD
   __init__ --> booster

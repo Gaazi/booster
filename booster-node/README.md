@@ -1,65 +1,58 @@
-# 🚀 booster-node
+# booster-node
 
-> **Zero-Dependency Ultra-Fast Caching, Minification, and Compression Booster for Node.js, Express, and Next.js.**
+A zero-runtime-dependency cache and compression middleware for Express/Connect
+style applications and native Node HTTP servers. Test your framework adapter
+before rollout; Next.js and Fastify are not automatic drop-in integrations.
 
----
+## Safety and operation
 
-## ⚡ Superpowers
+- Cache only explicitly public GET responses. Cookies, credentials, host user
+  scope, ranges and revalidation requests bypass shared storage on every path.
+- Respect origin freshness, private/no-store/no-transform, encodings and variants.
+  Replay origin security headers on hits and use Age and conditional validators.
+- Bound resident body bytes (default 64 MiB) and entry count with monotonic TTL.
+  Budgets apply per process and exclude runtime/metadata overhead.
+- Preserve HTML/CSS and cached body bytes. The optional JSON minifier removes
+  whitespace without rewriting numeric literals or string content.
+- Avoid retaining streamed chunks. Clear before/after writes and reject captures
+  from earlier mutation generations. Multiple workers still require coordination.
 
-* **Zero Dependencies:** Pure Node.js standard library (`zlib`, `crypto`, `http`). Installs in 0.1s.
-* **Microsecond Cache:** In-memory LRU cache with TTL expiration.
-* **C++ Brotli & Gzip:** Uses Node's built-in V8/C++ `zlib` engine.
-* **On-the-fly Minification:** HTML, CSS, and JSON compressed before transmission.
-* **Universal CDN Ready:** Injects `CDN-Cache-Control`, `Surrogate-Control`, and `ETag` headers automatically.
+## TypeScript integration
 
----
-
-## 📦 Quickstart (Express.js)
-
-```javascript
-const express = require('express');
-const { booster } = require('booster-node');
-
-const app = express();
-
-// ⚡ 1-line rocket acceleration:
-app.use(booster());
-
-app.get('/api/users', (req, res) => {
-  res.json({ users: [{ id: 1, name: "Ali" }] });
-});
-
-app.listen(3000, () => console.log('Rocket server running on :3000'));
-```
-
-## 📦 Quickstart (TypeScript / Express.js)
+Install a reviewed CI tarball in the consuming project. Development source and
+tests are TypeScript; the tarball contains generated CommonJS and declarations,
+so runtime consumers do not install TypeScript.
 
 ```typescript
-import express, { Request, Response } from 'express';
-import { booster, BoosterOptions } from 'booster-node';
+import express from "express";
+import {booster} from "booster-node";
 
 const app = express();
-
-const options: BoosterOptions = {
-  maxItems: 5000,
-  ttl: 600, // 10 minutes
-  minCompressSize: 256
-};
-
-// ⚡ 1-line rocket acceleration with full type-safety:
-app.use(booster(options));
-
-app.get('/api/users', (req: Request, res: Response) => {
-  res.json({ users: [{ id: 1, name: "Ali" }] });
+app.use(booster({ttl: 60, maxCacheBytes: 8 * 1024 * 1024}));
+app.get("/api/catalog", (_req, res) => {
+  res.setHeader("Cache-Control", "public, max-age=60");
+  res.json({catalog: ["public item"]});
 });
-
-app.listen(3000, () => console.log('Rocket server running on :3000'));
 ```
 
----
+Keep authorization, host validation and CORS outside the cache middleware.
+Do not mark personalized responses public. Keep one compression owner.
+Dynamic compression is opt-in; leave it off for pages carrying secrets.
 
-## 🧪 Testing
+## Development and verification
+
+From the repository root, using Node 22.18+ (CI covers 22 and 24):
 
 ```bash
-npm test
+npm ci --prefix booster-node --ignore-scripts
+npm run build --prefix booster-node
+npm run check:types --prefix booster-node
+node --test booster-node/test/test-ts.ts
 ```
+
+The build creates ignored dist output from src/*.ts; package exports and generated
+declarations point there. Legacy src/*.js files are not distributed or edited.
+npm pack normally builds first; CI explicitly builds before packing with
+--ignore-scripts. The same native test suite also runs against the installed
+tarball using BOOSTER_NODE_ENTRY, so passing source tests cannot hide a different
+packaged runtime.

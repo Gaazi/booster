@@ -11,4 +11,5 @@ build/
 
 docs/index.html
 .venv/
+node_modules/
 .booster-setup.json

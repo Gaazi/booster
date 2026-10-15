@@ -185,7 +185,8 @@ booster/
 └── updater.py            # Update checking against GitHub Releases and monthly heartbeat daemon
 
 booster-node/             # Node.js Express/Connect implementation
-├── lib/                  # Node cache, compression, and middleware units
+├── src/*.ts              # Canonical Node cache, compression, policy and middleware
+├── dist/                 # Generated runtime and declarations (ignored; packaged)
 ├── test/                 # Test suites for Node.js engine
 └── package.json          # Node package manifest
 
@@ -249,9 +250,9 @@ BOOSTER_CONFIG = {
 ```
 
 ### 7.3 Embedded Node.js / Express
-```javascript
-const express = require('express');
-const { booster } = require('booster-node');
+```typescript
+import express from 'express';
+import { booster } from 'booster-node';
 
 const app = express();
 app.use(booster({
@@ -259,6 +260,11 @@ app.use(booster({
     maxCacheBytes: 32 * 1024 * 1024,
 }));
 ```
+
+Node responses require explicit `Cache-Control: public`; cookies/auth bypass
+even static-looking paths. The host must declare public policy at the origin.
+Node development uses TypeScript only; `npm run build --prefix booster-node`
+generates the packaged runtime. See [the recent review](REVIEW_2026-10-15.md).
 
 ### 7.4 Standalone Proxy Gateway
 Accelerate any legacy or external upstream service without code changes:

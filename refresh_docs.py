@@ -2,7 +2,26 @@
 
 import ast
 import html
+import re
 from pathlib import Path
+
+
+def node_source_map() -> list[str]:
+    """Map canonical TypeScript declarations without reading dependencies or builds."""
+    lines: list[str] = []
+    declaration = re.compile(r"^(?:export )?(?:async )?(?:function|class|interface)\s+(\w+)")
+    method = re.compile(r"^  (?:(?:public|private|static|get) )*(\w+)\s*\(")
+    for path in sorted(Path("booster-node/src").glob("*.ts")):
+        lines.extend([f"## {path.as_posix()}", ""])
+        previous = ""
+        for number, line in enumerate(path.read_text(encoding="utf-8-sig").splitlines(), 1):
+            match = declaration.match(line) or method.match(line)
+            if match and match[1] not in {"if", "for", "while", "switch"}:
+                doc = previous.strip().removeprefix("/**").removesuffix("*/").strip()
+                lines.append(f"- `{match[1]}` (line {number}): {doc or 'TypeScript declaration.'}")
+            previous = line if line.lstrip().startswith("/**") else ""
+        lines.append("")
+    return lines
 
 
 def main() -> None:
@@ -21,7 +40,7 @@ def main() -> None:
                 edges.add(f"  {path.stem} --> {node.module.split('.')[-1]}")
 
         lines.append("")
-    lines.extend(["```mermaid", "graph TD", *sorted(edges), "```", ""])
+    lines.extend([*node_source_map(), "```mermaid", "graph TD", *sorted(edges), "```", ""])
     text = "\n".join(lines)
     Path("CODEMAP.md").write_text(text, encoding="utf-8")
     Path("docs").mkdir(exist_ok=True)

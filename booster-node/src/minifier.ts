@@ -1,42 +1,34 @@
 /**
  * High-speed on-the-fly minifier for HTML, CSS, and JSON.
  */
-const RE_HTML_COMMENTS = /<!--(?!\[if).*?-->/gs;
-const RE_HTML_SPACES = />\s+</g;
-const RE_CSS_COMMENTS = /\/\*.*?\*\//gs;
-const RE_CSS_SPACES = /\s*([\{\}:;,>])\s*/g;
-
+/** Preserve formatting and quoted content; use a frontend build tool for HTML. */
 export function minifyHTML(html: string): string {
-  return html.replace(RE_HTML_COMMENTS, "").replace(RE_HTML_SPACES, "><").trim();
+  return html;
 }
 
+/** Preserve CSS strings, custom properties and significant whitespace. */
 export function minifyCSS(css: string): string {
-  return css.replace(RE_CSS_COMMENTS, "").replace(RE_CSS_SPACES, "$1").trim();
+  return css;
 }
 
+/** Remove whitespace outside JSON strings without rounding numbers or rewriting keys. */
 export function minifyJSON(jsonStr: string): string {
   try {
-    return JSON.stringify(JSON.parse(jsonStr));
-  } catch {
-    return jsonStr;
+    JSON.parse(jsonStr);
+    return jsonStr.replace(/"(?:\\.|[^"\\])*"|[ \t\r\n]+/g, token => token.startsWith('"') ? token : "");
+  } catch (error) {
+    if (error instanceof SyntaxError) return jsonStr;
+    throw error;
   }
 }
 
 export class FastMinifier {
   public minify(content: Buffer | string, contentType: string = ""): Buffer {
     const baseType = contentType.split(";")[0].trim().toLowerCase();
+    const buffer = Buffer.isBuffer(content) ? content : Buffer.from(content);
+    if (baseType !== "application/json") return buffer;
     const text = typeof content === "string" ? content : content.toString("utf-8");
-
-    if (baseType === "text/html") {
-      return Buffer.from(minifyHTML(text), "utf-8");
-    }
-    if (baseType === "text/css") {
-      return Buffer.from(minifyCSS(text), "utf-8");
-    }
-    if (baseType === "application/json") {
-      return Buffer.from(minifyJSON(text), "utf-8");
-    }
-
-    return Buffer.isBuffer(content) ? content : Buffer.from(content);
+    if (!Buffer.from(text).equals(buffer)) return buffer;
+    return Buffer.from(minifyJSON(text), "utf-8");
   }
 }

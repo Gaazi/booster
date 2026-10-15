@@ -1,189 +1,56 @@
-/**
- * booster-node - Ultra-fast drop-in caching, minification, and compression engine for Node.js.
- */
+/** TypeScript-owned Express/Connect middleware with conservative public caching. */
 import { FastMemoryCache, CacheEntry } from "./cache.ts";
 import { ResponseCompressor } from "./compressor.ts";
-import type { CompressionResult } from "./compressor.ts";
 import { FastMinifier } from "./minifier.ts";
+import { requestAllowed, responseBlocksCache } from "./policy.ts";
+import { interceptResponse, serveCached } from "./response.ts";
+import { guardExplicitHeaders } from "./header-guard.ts";
+import type { BoosterOptions, BoosterMiddleware, EngineState, ResponseContext } from "./engine-types.ts";
+export type { BoosterOptions, BoosterMiddleware, NextFunction } from "./engine-types.ts";
+export type { CompressionResult } from "./compressor.ts";
 
 export const STATIC_EXTENSIONS: string[] = [
   ".css", ".js", ".mjs", ".woff", ".woff2", ".ttf", ".eot", ".otf",
   ".svg", ".png", ".jpg", ".jpeg", ".webp", ".gif", ".ico", ".map"
 ];
 
+/** Classify assets for callers; extensions never override credential privacy. */
 export function isStaticAsset(path: string): boolean {
   const clean = (path || "").split("?")[0].toLowerCase();
-  return clean.startsWith("/static/") || clean.startsWith("/assets/") || clean.startsWith("/public/") ||
-         STATIC_EXTENSIONS.some(ext => clean.endsWith(ext));
+  return ["/static/", "/assets/", "/public/"].some(prefix => clean.startsWith(prefix))
+    || STATIC_EXTENSIONS.some(extension => clean.endsWith(extension));
 }
 
-export interface BoosterOptions {
-  /** Maximum number of items in cache (default: 2000) */
-  maxItems?: number;
-  /** Default cache time-to-live in seconds (default: 300) */
-  ttl?: number;
-  /** Minimum payload size in bytes eligible for Brotli/Gzip compression (default: 512) */
-  minCompressSize?: number;
-  /** Adaptively compress dynamic/uncached responses on the fly (default: false) */
-  compressDynamic?: boolean;
+/** Clear before/after mutations and invalidate older in-flight capture contexts. */
+function trackMutation(engine: EngineState, ctx: ResponseContext): void {
+  const invalidate = (): void => { engine.generation++; engine.cache.clear(); };
+  invalidate();
+  ctx.res.once("finish", invalidate);
+  ctx.res.once("close", invalidate);
 }
 
-export type NextFunction = (err?: any) => void;
-
-export type BoosterMiddleware = (
-  req: any,
-  res: any,
-  next: NextFunction
-) => void;
-
+/** Construct one bounded engine while preserving the existing middleware API. */
 export function booster(options: BoosterOptions = {}): BoosterMiddleware {
-  const cache = new FastMemoryCache(options.maxItems || 2000, options.ttl || 300);
-  const compressor = new ResponseCompressor(options.minCompressSize || 512);
-  const minifier = new FastMinifier();
-
-  return function boosterMiddleware(req: any, res: any, next: NextFunction): void {
-    const method: string = (req.method || "GET").toUpperCase();
-    const url: string = req.url || "/";
-    const path: string = url.split("?")[0];
-    const query: string = url.split("?")[1] || "";
-    const isStatic = isStaticAsset(path);
-
-    // Mutation auto-invalidation
-    if (["POST", "PUT", "DELETE", "PATCH"].includes(method)) {
-      cache.invalidatePrefix(path);
-      return next();
-    }
-
-    // Range requests bypass shared cache
-    if (req.headers && (req.headers["range"] || req.headers["if-range"])) {
-      return next();
-    }
-
-    // Authenticated / personalized requests must never be cached publicly
-    const hasAuth = Boolean(req.headers && req.headers["authorization"]);
-    const hasCookie = Boolean(req.headers && req.headers["cookie"]);
-    const isPersonalized = hasAuth || (!isStatic && hasCookie);
-
-    if (method !== "GET" && method !== "HEAD") {
-      return next();
-    }
-
-    const host = (req.headers && req.headers["host"]) || "";
-    const key = cache.makeKey("GET", `${host}:${path}`, query);
-
-    if (!hasAuth && (isStatic || !hasCookie)) {
-      const cached = cache.get(key);
-
-      if (cached) {
-        if (req.headers && req.headers["if-none-match"] === cached.etag) {
-          res.statusCode = 304;
-          res.setHeader("ETag", cached.etag);
-          res.setHeader("Vary", "Accept-Encoding");
-          return res.end();
-        }
-
-        const { data, encoding } = compressor.compress(
-          cached.body,
-          cached.contentType,
-          req.headers ? req.headers["accept-encoding"] : ""
-        );
-
-        res.statusCode = cached.statusCode;
-        res.setHeader("Content-Type", cached.contentType);
-        res.setHeader("ETag", cached.etag);
-        res.setHeader("Vary", "Accept-Encoding");
-        res.setHeader("CDN-Cache-Control", "public, max-age=300, stale-while-revalidate=60");
-        res.setHeader("Surrogate-Control", "max-age=300");
-        res.setHeader("X-Powered-By", "booster-node");
-        if (encoding) res.setHeader("Content-Encoding", encoding);
-        res.setHeader("Content-Length", data.length);
-        return res.end(data);
-      }
-    }
-
-    // Intercept response
-    const originalEnd = res.end;
-    const chunks: Buffer[] = [];
-    let isStreaming = false;
-
-    const originalWrite = res.write;
-    res.write = function (chunk: any, ...args: any[]): any {
-      isStreaming = true;
-      if (chunk) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-      return originalWrite.apply(res, [chunk, ...args]);
+  const engine: EngineState = {
+    cache: new FastMemoryCache(options.maxItems ?? 2000, options.ttl ?? 300, options.maxCacheBytes),
+    compressor: new ResponseCompressor(options.minCompressSize ?? 512), options, generation: 0,
+  };
+  return (req, res, next): void => {
+    const url = req.originalUrl || req.url || "/";
+    const ctx: ResponseContext = {
+      engine, req, res, path: url.split("?")[0], generation: engine.generation,
+      key: JSON.stringify([req.headers.host || "", url]), eligible: requestAllowed(req) && !responseBlocksCache(res),
     };
-
-    res.end = function (chunk: any, ...args: any[]): any {
-      if (chunk) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-      const rawBody = Buffer.concat(chunks);
-      const contentType = (res.getHeader("content-type") || "text/plain").toString();
-      const cacheControl = (res.getHeader("cache-control") || "").toString().toLowerCase();
-      const vary = (res.getHeader("vary") || "").toString().toLowerCase();
-      const isExplicitPrivate = cacheControl.includes("private") || cacheControl.includes("no-store");
-      const isUncacheableDirective = cacheControl.includes("no-cache") || cacheControl.includes("max-age=0");
-      const hasContentEncoding = Boolean(res.getHeader("content-encoding"));
-      const hasContentRange = Boolean(res.getHeader("content-range"));
-      const hasSetCookie = Boolean(res.getHeader("set-cookie"));
-      const hasUnsupportedVary = vary && vary.split(",").some((v: string) => {
-        const s = v.trim();
-        return s && s !== "accept-encoding";
-      });
-
-      const isCacheable = !isStreaming
-        && !hasContentEncoding
-        && !hasContentRange
-        && !isExplicitPrivate
-        && !isUncacheableDirective
-        && !hasSetCookie
-        && !hasUnsupportedVary
-        && !isPersonalized
-        && res.statusCode === 200
-        && rawBody.length < 3000000;
-
-      if (isCacheable) {
-        const minified = minifier.minify(rawBody, contentType);
-        const entry = cache.set(key, path, 200, {}, minified, contentType);
-        if (!res.headersSent) res.setHeader("ETag", entry.etag);
-      } else if (options.compressDynamic && !isStreaming && res.statusCode === 200 && !hasContentEncoding && !hasContentRange) {
-        const { data, encoding } = compressor.compress(
-          rawBody,
-          contentType,
-          req.headers ? req.headers["accept-encoding"] : ""
-        );
-        if (encoding) {
-          if (!res.headersSent) {
-            res.setHeader("Content-Encoding", encoding);
-            res.setHeader("Content-Length", data.length);
-            res.setHeader("CDN-Cache-Control", "no-store");
-            res.setHeader("Surrogate-Control", "no-store");
-            res.setHeader("X-Powered-By", "booster-node");
-          }
-          return originalEnd.apply(res, [data, ...args]);
-        }
-      }
-
-      if (!res.headersSent) {
-        res.setHeader("X-Powered-By", "booster-node");
-        if (isCacheable) {
-          res.setHeader("CDN-Cache-Control", "public, max-age=300, stale-while-revalidate=60");
-          res.setHeader("Surrogate-Control", "max-age=300");
-        } else {
-          res.setHeader("CDN-Cache-Control", "no-store");
-          res.setHeader("Surrogate-Control", "no-store");
-        }
-      }
-      return originalEnd.apply(res, [chunk, ...args]);
-    };
-
+    if (req.method !== "GET") guardExplicitHeaders(res);
+    if (["POST", "PUT", "PATCH", "DELETE"].includes(req.method || "")) {
+      trackMutation(engine, ctx); next(); return;
+    }
+    if (!["GET", "HEAD"].includes(req.method || "")) { next(); return; }
+    const cached = ctx.eligible ? engine.cache.get(ctx.key) : null;
+    if (cached) { serveCached(ctx, cached); return; }
+    if (req.method === "GET") interceptResponse(ctx);
     next();
   };
 }
 
-export {
-  FastMemoryCache,
-  CacheEntry,
-  ResponseCompressor,
-  FastMinifier,
-};
-
-export type { CompressionResult };
+export { FastMemoryCache, CacheEntry, ResponseCompressor, FastMinifier };

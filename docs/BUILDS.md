@@ -9,14 +9,15 @@ a website, promote branches automatically or require publishing credentials.
 1. Test core-only installation/regressions on Python 3.10; run the full server
    suite on 3.11 and 3.14, including Django privacy regressions. The current
    Starlette server dependency requires Python 3.11+, while core supports 3.10+.
-2. Run Node JavaScript tests on 22 and 24; run native TypeScript tests on 24.
+2. Install the locked development toolchain, compile canonical TypeScript and
+   check generated public declarations; run native TS tests on Node 22 and 24.
 3. Only after tests pass, build a Python wheel and source archive and use
    `npm pack --ignore-scripts` to build the Node archive.
 4. Combine the three compressed distributions into `booster-COMMIT.zip` with
    a manifest containing the full commit SHA and SHA-256 package checksums.
 5. Download the bundle, verify its inventory/commit/checksums, and smoke-test
-   actual core-only wheel, optional standalone extras and Node archive
-   installations outside the source checkout.
+   actual core-only wheel and optional standalone extras outside the checkout.
+   Run the same native TypeScript regressions against the installed Node archive.
 
 The final `Verified packages` job fails when an earlier required step fails;
 an absent/skipped build is not accepted as success. Artifacts uploaded before
