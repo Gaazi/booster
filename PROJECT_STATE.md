@@ -1,13 +1,12 @@
 # Project State
-Updated: 2026-10-15 08:14
+Updated: 2026-10-15 08:17
 ## Done
-- Reusable engine safeguards, status API and configurable RAM budget remain intact. Invite integration was recorded at a7aa413 with 358 app tests and browser checks; Invite work belongs to the other agent.
-- Completed handed-off lightweight packaging: dependency-free core, lazy optional APIs and server/cdn/brotli extras; launcher installs its required extras.
-- Implemented verified compressed wheel/source/Node bundles, exact-commit dev artifact reuse on demo, fail-closed CI and an explicitly authorized fast-forward promotion command.
-- Local checks: 181 Python tests, 7 Node JS and 3 native TS tests passed; pip check, syntax, changed-function/YAML audit and diff check passed. Wheel/core/server and Node archive installation probes passed.
-- Added researched workload guidance in docs/USE_CASES.md and build/promotion instructions in docs/BUILDS.md.
+- Lightweight core/server packaging, compressed build pipeline, safe promotion helper and researched use-case docs pushed at 6fee5b8. Invite remains owned by the other agent.
+- Local full suite: 181 Python tests; 7 JS and 3 TS tests passed. Core/server wheel and Node tarball installations, pip check and syntax/diff audits passed.
+- First GitHub run passed Python 3.14 and Node 22/24; failed Python 3.10 server installation and correctly blocked artifact publication/verification.
+- Fixed dev-run lookup before workflow exists on main; 33 pipeline regressions passed. Split core Python 3.10 checks from server 3.11/3.14 checks to honor current Starlette requirements.
 ## Pending
-- First GitHub CI run will be inspected after pushing this task. No demo/main promotion, deployment or repository-protection setting change has been performed.
-- Independent Node parity review, multi-worker invalidation, physical-phone/production measurements and Go/Rust phases remain follow-ups.
+- Inspect the corrected remote CI run and download/verify its compressed artifact. No demo/main promotion, deployment or protection-setting change performed.
+- Node parity, multi-worker invalidation and real-phone/production measurements remain follow-ups; Invite recorded at a7aa413 with 358 app tests.
 ## Next Step
-- Validate the remote CI run and hand off the verified compressed build; prioritize measured personalized-card performance without sharing private HTML.
+- Complete remote package verification, then hand off the compressed download and workload-specific guidance.

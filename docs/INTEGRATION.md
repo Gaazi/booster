@@ -32,6 +32,8 @@ server dependencies. The host provides its own ASGI/Django framework. Optional
 extras are `server` (standalone dashboard/proxy and HTTP client), `cdn` (HTTP
 client for CDN integration), and `brotli` (optional codec). Core GZip uses the
 standard library; without Brotli, compatible requests can still use GZip.
+Core supports Python 3.10+. The current standalone/server extra requires Python
+3.11+ through its Starlette dependency; use a matching interpreter for that extra.
 For a pinned standalone installation, use:
 
 ```text

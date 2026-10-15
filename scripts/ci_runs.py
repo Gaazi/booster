@@ -9,7 +9,7 @@ from typing import Any
 
 from scripts.build_bundle import check_sha
 
-WORKFLOW = "build.yml"
+WORKFLOW_PATH = ".github/workflows/build.yml"
 
 
 def api(repository: str, endpoint: str) -> dict[str, Any]:
@@ -29,7 +29,7 @@ def matching_run(run: dict[str, Any], repository: str, sha: str) -> bool:
         run.get("head_sha") == check_sha(sha)
         and run.get("head_branch") == "dev"
         and run.get("event") == "push"
-        and run.get("path") == ".github/workflows/build.yml"
+        and run.get("path") == WORKFLOW_PATH
         and run.get("status") == "completed"
         and run.get("conclusion") == "success"
         and (run.get("repository") or {}).get("full_name") == repository
@@ -40,7 +40,7 @@ def matching_run(run: dict[str, Any], repository: str, sha: str) -> bool:
 def find_build(repository: str, sha: str) -> int | None:
     """Return a successful dev run with an available exact-commit artifact."""
     check_sha(sha)
-    endpoint = f"actions/workflows/{WORKFLOW}/runs?branch=dev&event=push&head_sha={sha}&per_page=20"
+    endpoint = f"actions/runs?branch=dev&event=push&head_sha={sha}&per_page=20"
     for run in api(repository, endpoint).get("workflow_runs", []):
         if not matching_run(run, repository, sha):
             continue

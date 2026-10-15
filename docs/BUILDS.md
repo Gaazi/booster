@@ -6,7 +6,9 @@ Every push/merge to `dev` or `demo`, and every pull request targeting either
 branch, runs `.github/workflows/build.yml`. It does not publish packages, deploy
 a website, promote branches automatically or require publishing credentials.
 
-1. Run Python tests on 3.10 and 3.14, including Django privacy regressions.
+1. Test core-only installation/regressions on Python 3.10; run the full server
+   suite on 3.11 and 3.14, including Django privacy regressions. The current
+   Starlette server dependency requires Python 3.11+, while core supports 3.10+.
 2. Run Node JavaScript tests on 22 and 24; run native TypeScript tests on 24.
 3. Only after tests pass, build a Python wheel and source archive and use
    `npm pack --ignore-scripts` to build the Node archive.

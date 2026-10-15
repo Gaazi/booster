@@ -202,3 +202,13 @@ def test_merge_commands_force_fast_forward_only(tmp_path: Path) -> None:
     environment = run.call_args.kwargs["env"]
     assert environment["GIT_CONFIG_KEY_0"] == "merge.ff"
     assert environment["GIT_CONFIG_VALUE_0"] == "only"
+
+
+def test_reuse_before_workflow_reaches_default_branch() -> None:
+    """New dev workflows are discoverable without registering them on main."""
+    artifact = {"name": f"booster-build-{SHA}", "expired": False}
+    with patch.object(ci_runs, "api", side_effect=[
+        {"workflow_runs": [trusted_run()]}, {"artifacts": [artifact]},
+    ]) as api:
+        assert ci_runs.find_build("owner/booster", SHA) == 123
+    assert api.call_args_list[0].args[1].startswith("actions/runs?")
