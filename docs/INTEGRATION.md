@@ -110,6 +110,35 @@ the serving process; it is not a fleet-wide cache purge or aggregate report.
 - Existing privacy headers, upload checks and rate limits remain application
   responsibilities. Route policy is defense in depth, not authorization.
 
+### Multiple workers: choose a freshness strategy
+
+Each worker owns its own RAM cache. A mutation or authorized dashboard clear
+invalidates only the worker that handles it. Repeated requests to a load-balanced
+clear endpoint do not guarantee that every worker has received the request.
+The Python two-process regression in `tests/test_workers.py` verifies this
+boundary, credential bypass on a stale peer, and recovery after clearing both
+workers explicitly. It also verifies static-only route selection across workers.
+
+For the lightest deployment, use the static-only `CachePolicy` example above.
+Exclude mutable catalog, price, stock, account and live-status routes even when
+their origin declares them public. Use content-versioned asset URLs and retain
+the old asset bytes while old pages reference them. Each worker can then warm
+the new asset URL independently; no shared invalidation service is needed for
+those immutable files. This does not coordinate caches in browsers or a CDN.
+
+If mutable public responses must be cached across workers, the host needs an
+authenticated coordination mechanism that invalidates every worker and handles
+in-flight reads. Booster does not currently provide that mechanism. Until it is
+implemented and tested, exclude those routes from RAM caching. A short TTL
+bounds retention but does not guarantee immediate freshness after a write.
+Application `no-store` responses and credentialed requests continue to bypass
+storage; changing the route policy does not replace authorization.
+
+Budget RAM per worker: four engines with the default 64 MiB cache budget can
+retain up to 256 MiB of counted entries, plus process and other memory overhead.
+The budget is not a whole-application RSS limit. Measure the actual worker count
+and workload before adding a shared backend or raising cache limits.
+
 ## Verification and performance review
 
 Run `python -m pytest -q`, `python -m pip check` and the Node tests documented in

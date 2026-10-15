@@ -1,13 +1,13 @@
 # Project State
-Updated: 2026-10-15 13:55
+Updated: 2026-10-15 18:48
 ## Done
-- Reviewed d136fde..a9e71bf and pushed fixes at fd7bffb. Reproduced eight failing Node regressions plus explicit-writeHead edge leakage; fixed privacy, byte/header integrity, HEAD poisoning, freshness, no-transform, negotiation and mutation races.
-- Canonical TypeScript now builds the distributed Node runtime/declarations with pinned dev-only tooling; legacy JavaScript is unmodified and excluded from package exports/files.
-- GitHub run 38705218225 succeeded for fd7bffb: Python core 3.10, full Python 3.11/3.14, Node 22/24, type/build checks and the same 31 native tests against installed Node archive.
-- Local source and installed-archive tests: 31 passed each. Full Python suite: 183 passed; pip check, TS compilation/public-type checks, syntax/diff/function-size audit and npm audit (0 reported vulnerabilities) passed.
-- Added byte budgets, monotonic TTL, generation invalidation, stream passthrough, host privacy/early-header guards and lossless JSON whitespace handling. Review evidence: docs/REVIEW_2026-10-15.md; Python/Node CODEMAP refreshed.
+- Reviewed d136fde..a9e71bf and pushed runtime/privacy fixes at fd7bffb. Canonical TypeScript compiles to the distributed Node runtime/declarations; legacy JavaScript is excluded from package exports/files.
+- CI runs 38705218225 (code) and 38705609713 (documentation) succeeded: Python core 3.10, full Python 3.11/3.14, Node 22/24, type/build checks and 31 tests against the installed Node archive.
+- Added two actual-process Python regressions: mutations/admin clears are process-local, credentialed requests bypass stale peer caches, explicit all-worker clears recover freshness, and static-only policy excludes mutable routes. Documented deployment choices and per-worker RAM budgets in INTEGRATION.md/NEXT_STEPS.md.
+- Current local Python suite: 185 passed, 1 existing Starlette warning. New worker tests: 2 passed. Syntax, changed-file audit and diff check passed. Unchanged Node source/package suites previously passed 31 each; prior pip check, type checks and npm audit passed.
+- Runtime/source review evidence remains in docs/REVIEW_2026-10-15.md; source map refreshed. No runtime changes were needed for this worker-validation task.
 ## Pending
-- Existing module-detection/Starlette deprecation warnings are nonfatal. Multi-worker coordination and real-phone/production validation remain follow-ups; full HTTP/framework parity is not proven.
-- No demo/main promotion or deployment performed. Consuming Node apps should pin the reviewed build; Invite remains with its agent.
+- Shared invalidation is not implemented: exclude mutable cached routes in multi-worker deployments until coordination is implemented/tested. Full Node/framework/HTTP parity, physical-phone and production validation remain unproven.
+- Existing module-detection/Starlette deprecation warnings are nonfatal. No demo/main promotion or deployment performed. Invite remains with its agent.
 ## Next Step
-- Use successful CI artifacts from the reviewed revision; update consumers deliberately and promote only on an explicit current request.
+- Use reviewed CI artifacts for deliberate consumer integration; measure actual website performance and validate on physical phones. Promote or deploy only on an explicit current request.

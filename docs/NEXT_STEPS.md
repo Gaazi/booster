@@ -45,8 +45,11 @@ and local measurements. Live/physical-phone performance is still unverified.
    and payload size on each target website. Benchmark with and without Booster,
    then test on a physical phone. Avoid speculative speed or cost guarantees.
 5. **Multiple workers:** plan shared invalidation only when measured workloads
-   require it. Today each process has an independent RAM cache. Version asset
-   URLs and document coordinated invalidation/restarts before deployment.
+   require it. Two-process Python regressions confirm that mutations/admin clears
+   are local, credentialed requests bypass a stale peer, and static-only policy
+   keeps mutable routes fresh. Each process still has an independent RAM cache.
+   Use versioned assets; exclude mutable routes until coordinated invalidation
+   is implemented. See INTEGRATION.md for the deployment choices and RAM budget.
 6. **Operator usability:** expose cache bypass reasons and a small health summary
    without logging tokens, names or full private URLs. Keep the dashboard optional
    and local. Any dashboard placement/style change needs an approved mockup.
