@@ -11,6 +11,8 @@ export interface BoosterOptions {
   ttl?: number;
   /** Minimum payload size in bytes eligible for Brotli/Gzip compression (default: 512) */
   minCompressSize?: number;
+  /** Adaptively compress dynamic/uncached responses on the fly (default: false) */
+  compressDynamic?: boolean;
 }
 
 export type NextFunction = (err?: any) => void;
@@ -20,6 +22,9 @@ export type BoosterMiddleware = (
   res: any,
   next: NextFunction
 ) => void;
+
+export const STATIC_EXTENSIONS: string[];
+export function isStaticAsset(path: string): boolean;
 
 /**
  * Drop-in ultra-fast caching, minification, and compression engine for Node.js.

@@ -177,9 +177,9 @@ If you want to accelerate an existing website without editing code:
 pytest
 ```
 
-### Run Node.js Test Suite (5 Test Suites):
+### Run Node.js Test Suite (Native TypeScript):
 ```bash
-node booster-node/test/test.js
+node --test booster-node/test/test-ts.ts
 ```
 
 ---

@@ -7,7 +7,7 @@ Run from the project root directory.
 | One-click setup & launch | `.\start.bat` |
 | CLI accelerator launch | `booster --target http://127.0.0.1:8000` |
 | Run full Python tests (109 tests) | `pytest` |
-| Run Node.js tests (5 suites) | `node booster-node/test/test.js` |
+| Run Node.js tests (TypeScript native) | `node --test booster-node/test/test-ts.ts` |
 | Force check updates | `curl http://127.0.0.1:5050/api/check-update` |
 | Clear cache & trigger CDN purge | `curl -X POST -H "X-Booster-Admin: 1" http://127.0.0.1:5050/api/clear-cache` |
 | Refresh docs & CODEMAP | `python refresh_docs.py` |

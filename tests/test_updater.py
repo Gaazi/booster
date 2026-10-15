@@ -76,12 +76,13 @@ def test_server_update_endpoints() -> None:
     client = TestClient(app, base_url="http://127.0.0.1:5050", client=("127.0.0.1", 12345))
     headers = {"X-Booster-Admin": "1"}
 
-    res = client.get("/api/check-update", headers=headers)
-    assert res.status_code == 200
+    with patch("booster.updater.fetch_latest_release", new_callable=AsyncMock, return_value={"tag_name": "v1.0.1"}):
+        res = client.get("/api/check-update", headers=headers)
+        assert res.status_code == 200
 
-    data = res.json()
-    assert "current_version" in data
-    assert "update_type" in data
+        data = res.json()
+        assert "current_version" in data
+        assert "update_type" in data
 
     with patch("booster.updater.apply_patch_update", return_value=True):
         res_apply = client.post("/api/apply-update", headers=headers)

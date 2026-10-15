@@ -54,3 +54,9 @@ its caching/compression code.
 - After completing every task or conversation, you MUST update `PROJECT_STATE.md`.
 - Keep `PROJECT_STATE.md` under 50 lines with current Done, Pending, and Next Step.
 - Commit each completed task and push immediately to the authorized branch (`dev`).
+
+### 5. Node.js & TypeScript Mandate (STRICTLY ENFORCED)
+- **Full TypeScript Transition**: The project has completely migrated from JavaScript to TypeScript for Node.js (`booster-node`).
+- **NO Vanilla JavaScript (`.js`) Development**: Agents must NEVER write, modify, or add new features or tests in JavaScript (`.js`). All Node.js logic and tests MUST be implemented strictly in TypeScript (`src/*.ts`, `test/test-ts.ts`).
+- **Native TypeScript Test Runner**: All Node tests execute via `node --test booster-node/test/test-ts.ts`.
+

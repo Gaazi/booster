@@ -33,7 +33,7 @@
     "node": ">=18.0.0"
   },
   "scripts": {
-    "test": "node --test test/test.js && node --test test/test-ts.ts",
+    "test": "node --test test/test-ts.ts",
     "test:ts": "node --test test/test-ts.ts",
     "start": "node src/index.js"
   },

@@ -1,13 +1,13 @@
 # Project State
-Updated: 2026-10-15 10:02
+Updated: 2026-10-15 10:41
 ## Done
-- Enhanced docs/FEATURES_AND_ARCHITECTURE.md with complete technology ecosystem matrix, 50/50 division of responsibilities table, and fast-track 3-step acceleration playbook.
-- Prominently integrated FEATURES_AND_ARCHITECTURE.md across README.md and AGENTS.md for instant agent and developer onboarding.
-- Lightweight dependency-free core and lazy server/cdn/brotli extras completed. Core supports Python 3.10+; current server extra requires 3.11+.
-- GitHub run 38673219129 succeeded for 9e3cf675: core Python 3.10, full server 3.11/3.14, Node 22/24, compressed packaging and clean installed-package checks.
-- Local full suite: 183 Python tests passed; Node checks passed 7 JS and 3 TS tests.
+- Audited recent pre-merge dev updates and fixed critical booster-node privacy leak: uncacheable/private responses now strictly enforce CDN-Cache-Control: no-store and Surrogate-Control: no-store.
+- Enforced strict TypeScript-only mandate for booster-node in AGENTS.md, package.json, and workflows; ported all 10 legacy tests into native TypeScript test-ts.ts and safely retired test.js into .trash/.
+- Implemented Range/If-Range bypass, cookie/auth personalization isolation, and host isolation for booster-node in src/index.ts and types.
+- Fixed hermetic unit test mocking in tests/test_updater.py and added MIT LICENSE files across Python and Node distributions.
+- Full local test suites passing: 178 Python tests, 13 Node TypeScript native tests.
 ## Pending
-- No demo/main promotion, deployment or protection-setting change performed. Node parity, multi-worker invalidation and real-phone/production measurements remain follow-ups.
-- Invite integration was recorded at a7aa413 with 358 app tests; coordinate future package pin updates with its agent.
+- No demo/main promotion or deployment performed without explicit request. Multi-worker invalidation and real-phone/production measurements remain follow-ups.
+- Coordinate package pin updates with consuming apps on dev.
 ## Next Step
-- Consume a successful verified dev CI artifact; use python -m scripts.promote_demo --authorized only on a current explicit promotion request.
+- Run verified CI build on dev; use python -m scripts.promote_demo --authorized only on explicit user request.
