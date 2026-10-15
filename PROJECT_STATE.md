@@ -1,14 +1,13 @@
 # Project State
-Updated: 2026-10-15 18:48
+Updated: 2026-10-15 19:03
 ## Done
-- Reviewed d136fde..a9e71bf and pushed runtime/privacy fixes at fd7bffb. Canonical TypeScript compiles to the distributed Node runtime/declarations; legacy JavaScript is excluded from package exports/files.
-- CI runs 38705218225 (code) and 38705609713 (documentation) succeeded: Python core 3.10, full Python 3.11/3.14, Node 22/24, type/build checks and 31 tests against the installed Node archive.
-- Final worker-validation revision e57558e passed CI run 38741590575: all Python/Node jobs, compressed build and installed-package verification succeeded; the compressed artifact is available.
-- Added two actual-process Python regressions: mutations/admin clears are process-local, credentialed requests bypass stale peer caches, explicit all-worker clears recover freshness, and static-only policy excludes mutable routes. Documented deployment choices and per-worker RAM budgets in INTEGRATION.md/NEXT_STEPS.md.
-- Current local Python suite: 185 passed, 1 existing Starlette warning. New worker tests: 2 passed. Syntax, changed-file audit and diff check passed. Unchanged Node source/package suites previously passed 31 each; prior pip check, type checks and npm audit passed.
-- Runtime/source review evidence remains in docs/REVIEW_2026-10-15.md; source map refreshed. No runtime changes were needed for this worker-validation task.
+- At the user explicit request, promoted verified dev bbaa523f79583dc3d6ed7332a013404bd8d00e72 to demo by fast-forward and immediately pushed. Verified the exact-commit compressed bundle before promotion; source CI 38743133151 succeeded.
+- Demo CI 38743619845 succeeded. Requested demo-to-dev synchronization was already up to date; origin/dev and origin/demo both matched bbaa523 at the sync checkpoint. Returned to dev; this state record is a subsequent documentation-only dev commit.
+- Runtime/privacy fixes at fd7bffb make canonical TypeScript the distributed Node runtime/declarations. Legacy JavaScript is excluded from package exports/files. Review evidence: docs/REVIEW_2026-10-15.md.
+- Worker revision e57558e passed CI 38741590575 and local Python tests: 185 passed, 1 existing Starlette warning. Two actual-process tests prove local-only invalidation, credential bypass on stale peers, all-worker-clear recovery and static-only freshness.
+- Node source/installed-package suites passed 31 each. CI covers Python core 3.10, full Python 3.11/3.14 and Node 22/24, builds compressed distributions and verifies installed packages. Prior syntax, changed-file audit, diff, pip check, type checks and npm audit passed.
 ## Pending
-- Shared invalidation is not implemented: exclude mutable cached routes in multi-worker deployments until coordination is implemented/tested. Full Node/framework/HTTP parity, physical-phone and production validation remain unproven.
-- Existing module-detection/Starlette deprecation warnings are nonfatal. No demo/main promotion or deployment performed. Invite remains with its agent.
+- Shared invalidation remains unimplemented: exclude mutable cached routes with multiple workers until coordination is tested. Physical-phone/production checks and complete Node/framework/HTTP parity remain unproven. Existing nonfatal warnings remain.
+- No main merge, production deployment or restart performed. Invite remains with its agent.
 ## Next Step
-- Use reviewed CI artifacts for deliberate consumer integration; measure actual website performance and validate on physical phones. Promote or deploy only on an explicit current request.
+- Use the verified bbaa523 compressed artifact on demo for deliberate consumer integration; measure real workloads and physical-phone performance. Any later promotion or production change requires a new explicit request.
