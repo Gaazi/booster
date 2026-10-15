@@ -22,7 +22,7 @@ def command(repo: Path, arguments: list[str]) -> str:
 
 
 def check_checkout(repo: Path) -> str:
-    """Require clean dev and aligned branches before a fast-forward promotion."""
+    """Require a clean dev checkout matching the current remote source."""
     if command(repo, ["git", "branch", "--show-current"]) != "dev":
         raise ValueError("Run promotion from the dev checkout")
     if command(repo, ["git", "status", "--porcelain"]):
@@ -31,12 +31,17 @@ def check_checkout(repo: Path) -> str:
     sha = check_sha(command(repo, ["git", "rev-parse", "dev"]))
     if sha != command(repo, ["git", "rev-parse", "origin/dev"]):
         raise ValueError("Local dev must match origin/dev")
-    if command(repo, ["git", "rev-parse", "demo"]) != command(
-        repo, ["git", "rev-parse", "origin/demo"]
-    ):
-        raise ValueError("Local demo must match origin/demo")
-    command(repo, ["git", "merge-base", "--is-ancestor", "demo", "dev"])
     return sha
+
+
+def prepare_demo(repo: Path) -> None:
+    """Catch up an outdated local demo without replacing unpublished work."""
+    local = command(repo, ["git", "rev-parse", "demo"])
+    remote = command(repo, ["git", "rev-parse", "origin/demo"])
+    if local != remote:
+        command(repo, ["git", "merge-base", "--is-ancestor", "demo", "origin/demo"])
+        command(repo, ["git", "fetch", "origin", "refs/heads/demo:refs/heads/demo"])
+    command(repo, ["git", "merge-base", "--is-ancestor", "demo", "dev"])
 
 
 def verified_download(repo: Path, sha: str) -> Path:
@@ -66,6 +71,7 @@ def promote(repo: Path, authorized: bool) -> Path:
         return bundle
     if check_checkout(repo) != sha:
         raise ValueError("Dev changed during verification; verify the new build first")
+    prepare_demo(repo)
     helper = Path.home() / ".agents" / "manage_agents.py"
     if not helper.is_file():
         raise ValueError("Shared merge helper is unavailable; no branches changed")

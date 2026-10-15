@@ -1,12 +1,13 @@
 # Project State
-Updated: 2026-10-15 08:17
+Updated: 2026-10-15 08:21
 ## Done
-- Lightweight core/server packaging, compressed build pipeline, safe promotion helper and researched use-case docs pushed at 6fee5b8. Invite remains owned by the other agent.
-- Local full suite: 181 Python tests; 7 JS and 3 TS tests passed. Core/server wheel and Node tarball installations, pip check and syntax/diff audits passed.
-- First GitHub run passed Python 3.14 and Node 22/24; failed Python 3.10 server installation and correctly blocked artifact publication/verification.
-- Fixed dev-run lookup before workflow exists on main; 33 pipeline regressions passed. Split core Python 3.10 checks from server 3.11/3.14 checks to honor current Starlette requirements.
+- Completed lightweight dependency-free core and lazy server/cdn/brotli extras; server extra requires Python 3.11+, core remains 3.10+. Invite remains the other agent responsibility.
+- GitHub run 38672868256 succeeded for commit 39082e6: core 3.10, full Python 3.11/3.14, Node 22/24, compressed packages and clean core/server/Node installations. Its downloaded bundle passed commit/checksum verification locally.
+- Local current checks: 183 Python tests passed; prior unchanged Node JS/TS checks passed 7/3. Syntax, diff, function-size/types, pip checks and actual wheel/tarball installs passed.
+- Pinned current official Node24 actions by commit SHA. Promotion previews only verify/download; authorized promotion safely catches up an old local demo, preserves unpublished work, then fast-forwards and immediately pushes.
+- Research, limits and workload recommendations are in docs/USE_CASES.md; compressed build/download and promotion guidance is in docs/BUILDS.md.
 ## Pending
-- Inspect the corrected remote CI run and download/verify its compressed artifact. No demo/main promotion, deployment or protection-setting change performed.
-- Node parity, multi-worker invalidation and real-phone/production measurements remain follow-ups; Invite recorded at a7aa413 with 358 app tests.
+- No demo/main promotion, deployment or repository-protection change performed. Node parity, multi-worker invalidation and real-phone/production measurements remain follow-ups.
+- Invite integration was recorded at a7aa413 with 358 application tests; coordinate future package pin updates with its agent.
 ## Next Step
-- Complete remote package verification, then hand off the compressed download and workload-specific guidance.
+- Use the successful current dev CI artifact; promote via python -m scripts.promote_demo --authorized only on a current explicit request.

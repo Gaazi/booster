@@ -148,8 +148,9 @@ def test_authorized_promotion_pushes_immediately_after_merge(tmp_path: Path) -> 
     with patch.object(promote_demo.Path, "home", return_value=tmp_path):
         with patch.object(promote_demo, "check_checkout", return_value=SHA):
             with patch.object(promote_demo, "verified_download", return_value=tmp_path / "build.zip"):
-                with patch.object(promote_demo, "command", side_effect=["", "", f"{SHA}\trefs/heads/demo"]) as command:
-                    promote_demo.promote(tmp_path, authorized=True)
+                with patch.object(promote_demo, "prepare_demo"):
+                    with patch.object(promote_demo, "command", side_effect=["", "", f"{SHA}\trefs/heads/demo"]) as command:
+                        promote_demo.promote(tmp_path, authorized=True)
     calls = [call.args[1] for call in command.call_args_list]
     assert calls[0][2] == "merge"
     assert calls[1] == ["git", "push", "origin", "demo"]
@@ -176,10 +177,9 @@ def test_duplicate_archive_members_are_rejected(tmp_path: Path) -> None:
         build_bundle.verify_bundle(bundle, SHA)
 
 
-@pytest.mark.parametrize("dev_remote,demo_remote", [("b" * 40, "c" * 40), (SHA, "d" * 40)])
-def test_outdated_local_branches_cannot_promote(tmp_path: Path, dev_remote: str, demo_remote: str) -> None:
+def test_outdated_local_dev_cannot_promote(tmp_path: Path) -> None:
     """Local branch drift stops promotion instead of dropping unseen work."""
-    responses = ["dev", "", "", SHA, dev_remote, "c" * 40, demo_remote]
+    responses = ["dev", "", "", SHA, "b" * 40]
     with patch.object(promote_demo, "command", side_effect=responses):
         with pytest.raises(ValueError, match="match origin"):
             promote_demo.check_checkout(tmp_path)
@@ -188,10 +188,28 @@ def test_outdated_local_branches_cannot_promote(tmp_path: Path, dev_remote: str,
 def test_diverged_demo_cannot_promote(tmp_path: Path) -> None:
     """Divergence requires reconciliation and testing on dev before promotion."""
     failure = subprocess.CalledProcessError(1, ["git", "merge-base"])
-    responses = ["dev", "", "", SHA, SHA, "c" * 40, "c" * 40, failure]
+    responses = ["c" * 40, "c" * 40, failure]
     with patch.object(promote_demo, "command", side_effect=responses):
         with pytest.raises(subprocess.CalledProcessError):
-            promote_demo.check_checkout(tmp_path)
+            promote_demo.prepare_demo(tmp_path)
+
+
+def test_outdated_demo_catches_up_without_force(tmp_path: Path) -> None:
+    """An older local demo is synchronized automatically only when safe."""
+    with patch.object(promote_demo, "command", side_effect=["old", "new", "", "", ""]) as command:
+        promote_demo.prepare_demo(tmp_path)
+    calls = [call.args[1] for call in command.call_args_list]
+    assert calls[2] == ["git", "merge-base", "--is-ancestor", "demo", "origin/demo"]
+    assert calls[3] == ["git", "fetch", "origin", "refs/heads/demo:refs/heads/demo"]
+
+
+def test_unpublished_demo_work_is_preserved(tmp_path: Path) -> None:
+    """An unrelated local demo is never reset to the remote branch."""
+    failure = subprocess.CalledProcessError(1, ["git", "merge-base"])
+    with patch.object(promote_demo, "command", side_effect=["local", "remote", failure]) as command:
+        with pytest.raises(subprocess.CalledProcessError):
+            promote_demo.prepare_demo(tmp_path)
+    assert command.call_count == 3
 
 
 def test_merge_commands_force_fast_forward_only(tmp_path: Path) -> None:

@@ -208,10 +208,11 @@ Generated with `python refresh_docs.py`.
 ## scripts/promote_demo.py
 
 - `command` (line 14): Run an exact command in the repository and surface any failure.
-- `check_checkout` (line 24): Require clean dev and aligned branches before a fast-forward promotion.
-- `verified_download` (line 42): Download and validate the trusted exact-commit compressed dev build.
-- `promote` (line 60): Verify first, then use the shared merge helper and immediately push demo.
-- `main` (line 84): Preview promotion unless this invocation explicitly authorizes it.
+- `check_checkout` (line 24): Require a clean dev checkout matching the current remote source.
+- `prepare_demo` (line 37): Catch up an outdated local demo without replacing unpublished work.
+- `verified_download` (line 47): Download and validate the trusted exact-commit compressed dev build.
+- `promote` (line 65): Verify first, then use the shared merge helper and immediately push demo.
+- `main` (line 90): Preview promotion unless this invocation explicitly authorizes it.
 
 ## run.py
 

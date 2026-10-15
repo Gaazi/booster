@@ -53,11 +53,14 @@ python -m scripts.promote_demo --authorized
 ```
 
 The command requires Git, an authenticated GitHub CLI, the shared agent merge
-helper, a clean `dev` checkout, branches matching `origin`, a successful dev
+helper, a clean `dev` checkout matching `origin/dev`, a successful dev
 CI run, and a downloaded bundle with matching commit/checksums. It forces a
 fast-forward through the shared merge helper and immediately pushes `demo`.
 GitHub then checks the same artifact on `demo`. No force push, automatic conflict
 resolution, main merge or deployment is performed.
+Preview only verifies/downloads the dev build. During an authorized promotion,
+an outdated local `demo` catches up to `origin/demo` only by fast-forward fetch;
+unpublished/diverged demo work and active worktree protections stop the command.
 
 If `demo` has diverged, reconcile the changes on `dev` and verify its new CI
 before retrying. If remote policies reject the push, the command fails visibly;
