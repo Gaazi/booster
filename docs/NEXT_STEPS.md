@@ -37,10 +37,10 @@ and local measurements. Live/physical-phone performance is still unverified.
    lazy top-level exports are implemented. Maintain core-only import/install
    and standalone package regressions when extending public APIs.
    Per-host `max_cache_bytes` is already available; Invite uses an 8 MiB cap.
-3. **Node parity:** independently audit Node cache admission, encoded bodies,
-   credential/range bypass, Vary and TTL semantics against the Python privacy
-   regressions. Current Node tests pass, but passing seven tests is not a full
-   security review or evidence of identical policies.
+3. **Node parity:** the recent review fixed credential/static isolation, origin
+   freshness, header/byte integrity, HEAD poisoning and mutation races. All 31
+   native regressions run against canonical TS and the installed generated
+   package. See REVIEW_2026-10-15.md; complete framework/HTTP parity is not proven.
 4. **Real performance:** record cold/warm p50/p95, origin file reads, CPU, memory
    and payload size on each target website. Benchmark with and without Booster,
    then test on a physical phone. Avoid speculative speed or cost guarantees.

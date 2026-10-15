@@ -12,7 +12,7 @@
 
 ### Core Design Philosophy
 1. **Zero External Infrastructure Required:** Eliminates dependencies on external caching services such as Redis, Memcached, or Varnish for local node acceleration, saving cloud cost and network round-trip overhead.
-2. **Safety-First HTTP RFC Compliance:** Strictly conforms to RFC 9111 (HTTP Caching) and RFC 9110 (HTTP Semantics). Booster never caches personalized, authenticated, session-scoped, or mutating requests.
+2. **Conservative HTTP Caching Guards:** Implements RFC 9111 privacy/freshness guards and bypasses recognized credentials, session scope and mutating requests. Consuming apps must classify other personalized responses correctly; reviewed cases do not prove every HTTP/framework combination safe.
 3. **Bounded In-Memory Footprint:** Operates within strictly bounded process RAM budgets (`max_cache_bytes`) with monotonic LRU (Least Recently Used) eviction to prevent memory bloat or out-of-memory crashes.
 4. **Separation of Concerns:** Booster only handles reusable response acceleration. It does not replace application authentication, authorization, database indexing, frontend asset bundling, or TLS termination.
 
@@ -56,7 +56,7 @@ Booster provides seven core architectural facilities:
 - **Dual Budget Limits:** Bounded by total item count (`max_size`) and configurable memory budget (`max_cache_bytes`, defaults to 64 MiB; can be tuned e.g. 8 MiB for tight workers).
 - **LRU Eviction Policy:** Transparent eviction of least recently accessed entries whenever size or memory ceilings are reached.
 - **Fast Binary ETag & 304 Not Modified:** Generates SHA-256 binary entity tags for cached responses. Automatically processes `If-None-Match` requests and serves standard `304 Not Modified` headers without re-transmitting response bodies.
-- **Safe Thread Synchronization:** All cache reads, writes, and evictions are guarded by internal reentrant locks (`@synchronized`).
+- **Runtime-Specific Coordination:** Python cache operations use internal reentrant locks; Node uses process/event-loop-local maps and mutation generations. Workers do not share invalidation automatically.
 
 ### 2.2 Strict Privacy & HTTP RFC 9111 Boundaries (`http_policy.py`)
 - **Uncompromising Private Data Protection:** Automatically bypasses shared caching if:
