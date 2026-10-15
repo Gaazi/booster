@@ -10,10 +10,20 @@ Shared master SHA256: `e845210408af1e492c66a3599e1e4f4e15e5644a7ff049aac6807d4ff
 ## Booster integration reference
 
 Booster is the single reusable engine; consumers import it instead of copying
-its caching/compression code. Before integration or performance changes read
-[the integration and review guide](docs/INTEGRATION.md). It describes route
-selection, privacy boundaries, middleware order, installation and verification.
-For the next agent's prioritized work, read [the handoff](docs/NEXT_STEPS.md).
+its caching/compression code.
+- **Full Architecture & Features**: [docs/FEATURES_AND_ARCHITECTURE.md](docs/FEATURES_AND_ARCHITECTURE.md) contains the exhaustive specification, request lifecycles, caching mechanics, privacy boundaries, and module map.
+- **Integration & Review**: [docs/INTEGRATION.md](docs/INTEGRATION.md) covers route selection, privacy boundaries, middleware order, installation, and verification.
+- **Handoff & Priorities**: [docs/NEXT_STEPS.md](docs/NEXT_STEPS.md) defines the next agent's prioritized tasks.
+- **Workloads & Limits**: [docs/USE_CASES.md](docs/USE_CASES.md) provides workload suitability recommendations.
+
+### Core Facilities at a Glance
+1. **In-Memory Cache (RAM)**: Microsecond LRU cache (`FastMemoryCache`) bounded by size and bytes (`max_cache_bytes`), monotonic TTL, ETag generation, 304 conditional responses.
+2. **HTTP RFC 9111 Privacy**: Automatic bypass for cookies, `Authorization`, session tokens, private/no-store responses, and hop-by-hop headers.
+3. **Adaptive Compression**: Client-negotiated Brotli (`br`) and Gzip (`gzip`) with textual MIME filtering and minimum payload thresholds.
+4. **Conservative Minification**: Lossless UTF-8 JSON minification (`FastMinifier`); HTML/CSS formatting is preserved intact to avoid layout bugs.
+5. **Mutation Invalidation**: Automatic pre- and post-write cache invalidation on `POST`, `PUT`, `DELETE`, `PATCH`.
+6. **Multi-CDN Integration**: Standard edge headers (`CDN-Cache-Control`, `Surrogate-Control`) and zero-overhead purging for Cloudflare, BunnyCDN, and Fastly.
+7. **Standalone Gateway & Dashboard**: Reverse proxy on port 5051 with local telemetry GUI on port 5050, secured by `LocalAccessGuard` and `X-Booster-Admin`.
 
 ## Autonomous Agent Directives (MANDATORY FOR ALL AGENTS)
 
@@ -23,8 +33,9 @@ For the next agent's prioritized work, read [the handoff](docs/NEXT_STEPS.md).
 ### 1. Permitted Reading Scope (Documentation First)
 - **Primary Entry Points**: Read ONLY:
   1. `PROJECT_STATE.md` (Check current status, pending tasks, and next steps).
-  2. `README.md` (System architecture, high-level features, and usage).
-  3. Relevant files in `docs/` or `COMMANDS.md` (Commands, API specs, and technical references).
+  2. `README.md` (High-level features, quickstart, and deployment).
+  3. `docs/FEATURES_AND_ARCHITECTURE.md` (Comprehensive deep-dive: complete features, request lifecycles, caching mechanics, privacy rules, and module index).
+  4. Relevant specialized files in `docs/` (`INTEGRATION.md`, `USE_CASES.md`, `NEXT_STEPS.md`, `BUILDS.md`) or `COMMANDS.md`.
 - **DO NOT Read Entire Codebase**:
   - Never recursively scan or bulk-read source code directories (`booster/`, `booster-node/`, `tests/`) upon arrival.
   - Indiscriminate code scanning unnecessarily wastes context window tokens when documentation already defines the system.

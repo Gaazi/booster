@@ -28,16 +28,22 @@ We follow a strict 3-tier release pipeline to guarantee production stability:
 
 ---
 
+## 📖 Documentation & Architecture
+
+Before diving in, consult our architectural specifications and guides:
+- 🏛️ **[Comprehensive Features & System Architecture](docs/FEATURES_AND_ARCHITECTURE.md)** — In-depth technical breakdown of caching mechanics, HTTP RFC 9111 privacy boundaries, mutation invalidation, module map, and Mermaid request lifecycles.
+- 🛠️ **[Integration & Review Guide](docs/INTEGRATION.md)** — Safe website integration, framework setup (FastAPI, Django, Node.js), route policies, and middleware ordering.
+- 🎯 **[Workload Recommendations & Use Cases](docs/USE_CASES.md)** — Decision matrix for blogs, APIs, ecommerce, and dynamic sites.
+- 📦 **[Verified Compressed Builds](docs/BUILDS.md)** — Ready-to-install wheel/Node package downloads and verification.
+
+---
+
 ## ⚡ Superpowers
 
-For reviewed installation, safe website integration and operational limits,
-read [the integration and review guide](docs/INTEGRATION.md).
-
-Core caching/GZip does not require the standalone server's libraries. The
-dashboard/proxy uses the optional `server` extra; CDN HTTP calls and Brotli use
-the `cdn` and `brotli` extras. Pin a reviewed revision as described in the guide.
-See [verified compressed builds](docs/BUILDS.md) for ready-to-install Python/Node
-packages and [workload recommendations](docs/USE_CASES.md) before enabling caching.
+Core caching and standard GZip require zero external dependencies and run on Python 3.10+.
+The standalone GUI dashboard and proxy gateway use the optional `server` extra (Python 3.11+);
+CDN HTTP calls and Brotli compression use the `cdn` and `brotli` extras.
+Pin a reviewed revision as described in the [Integration Guide](docs/INTEGRATION.md).
 
 1. **Microsecond In-Memory Cache (RAM):**
    - High-throughput LRU cache with monotonic TTL expiration.
