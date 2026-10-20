@@ -101,11 +101,26 @@ Two owners double-compress or corrupt the `Content-Length`/`ETag` pair.
 ## 6. Several workers
 
 Each worker owns an independent RAM cache, and a write invalidates only the
-worker that received it. Until shared invalidation exists:
+worker that received it. Two options:
 
-- cache only immutable, versioned assets;
-- keep the byte budget per worker in mind (4 workers × 64 MiB = 256 MiB);
-- a short TTL bounds how long a stale entry can live, but does not remove it.
+- **Static-only caching (simplest):** cache only immutable, versioned assets.
+  Use content-versioned asset names (`app.v2.css`) so a deploy never needs a
+  cache purge.
+- **Shared invalidation:** pass one shared notice file so every worker applies
+  the invalidation before it serves the next request:
+
+  ```python
+  from booster import FileInvalidationBus
+
+  engine = booster.attach(app, invalidation_bus=FileInvalidationBus("/var/run/booster/notices.log"))
+  ```
+
+  The workers must run on the same host and share that path. The bus is best
+  effort: a worker that receives no request keeps its old entries until they
+  expire.
+
+Keep the byte budget per worker in mind (4 workers × 64 MiB = 256 MiB). A
+short TTL bounds how long a stale entry can live, but does not remove it.
 
 ## 7. Status and administration
 

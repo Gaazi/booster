@@ -10,6 +10,7 @@ from booster.compressor import ResponseCompressor
 from booster.minifier import FastMinifier
 from booster.telemetry import TelemetryTracker
 from booster.cache_policy import CachePolicy
+from booster.invalidation import FULL_CLEAR, InvalidationBus
 
 parse_asgi_headers = parse_headers
 
@@ -23,6 +24,7 @@ class RocketBooster:
                  surgical_invalidation: bool = False,
                  cache_policy: CachePolicy | None = None,
                  max_cache_bytes: int = 64 * 1024 * 1024,
+                 invalidation_bus: InvalidationBus | None = None,
                  _instance: "RocketBooster | None" = None) -> None:
         """Initialize bounded caches or share the instance exposed by attach."""
         if _instance is not None:
@@ -40,6 +42,7 @@ class RocketBooster:
         self.compress_dynamic = compress_dynamic
         self.surgical_invalidation = surgical_invalidation
         self.cache_policy = cache_policy or CachePolicy()
+        self.invalidation_bus = invalidation_bus
 
     @classmethod
     def attach(cls, app: Any, **kwargs: Any) -> "RocketBooster":
@@ -62,6 +65,7 @@ class RocketBooster:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
+        self.apply_pending_invalidations()
         method = scope.get("method", "GET").upper()
         path = scope.get("path", "/")
         if method in ("POST", "PUT", "DELETE", "PATCH"):
@@ -97,8 +101,30 @@ class RocketBooster:
         """Keep full invalidation safe by default for cross-route dependencies."""
         if self.surgical_invalidation:
             self.cache.invalidate_path_prefix(path)
+            self.publish_invalidation(path)
         else:
             self.cache.clear()
+            self.publish_invalidation(FULL_CLEAR)
+
+    def publish_invalidation(self, prefix: str) -> None:
+        """Tell the other workers that cached reads are no longer valid."""
+        if self.invalidation_bus is not None:
+            self.invalidation_bus.publish(prefix)
+
+    def apply_pending_invalidations(self) -> None:
+        """Apply the invalidation notices published by the other workers."""
+        if self.invalidation_bus is None:
+            return
+        for notice in self.invalidation_bus.drain():
+            if notice == FULL_CLEAR:
+                self.cache.clear()
+            else:
+                self.cache.invalidate_path_prefix(notice)
+
+    def clear_cache(self) -> None:
+        """Clear the local cache and tell the other workers to clear theirs."""
+        self.cache.clear()
+        self.publish_invalidation(FULL_CLEAR)
 
     async def _handle_get(self, scope: dict[str, Any], receive: Callable, send: Callable,
                           path: str, headers: dict[str, str]) -> bool:
@@ -162,5 +188,6 @@ class RocketBooster:
                 "minification": self.enable_minification,
                 "dynamic_compression": self.compress_dynamic,
                 "surgical_invalidation": self.surgical_invalidation,
+                "invalidation": "shared" if self.invalidation_bus else "process",
             },
         }

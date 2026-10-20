@@ -129,6 +129,27 @@ The Python two-process regression in `tests/test_workers.py` verifies this
 boundary, credential bypass on a stale peer, and recovery after clearing both
 workers explicitly. It also verifies static-only route selection across workers.
 
+**Shared invalidation (opt-in).** When the workers run on the same host, pass
+one shared notice file so every worker applies the invalidation before it
+serves the next request:
+
+```python
+from booster import FileInvalidationBus
+
+engine = booster.attach(app, invalidation_bus=FileInvalidationBus("/var/run/booster/notices.log"))
+```
+
+The worker that handled the write publishes the notice; every other worker
+applies it on its next request. The file is truncated when it grows past its
+size limit, and a reader that notices the truncation applies a full clear,
+because that is the only safe reading of a lost notice. The bus is best
+effort: a worker that never receives a request keeps its old entries until
+they expire. `tests/test_shared_invalidation.py` runs two real processes and
+proves the peer returns the fresh body after the other worker wrote, and that
+the documented process-local behaviour is unchanged when no bus is configured.
+`engine.get_status()["configuration"]["invalidation"]` reports `shared` or
+`process`.
+
 For the lightest deployment, use the static-only `CachePolicy` example above.
 Exclude mutable catalog, price, stock, account and live-status routes even when
 their origin declares them public. Use content-versioned asset URLs and retain

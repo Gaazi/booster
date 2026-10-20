@@ -18,6 +18,7 @@ from booster.minifier import FastMinifier
 from booster.telemetry import TelemetryTracker
 from booster.local_security import validate_target
 from booster.proxy_transport import BodyTooLarge, outgoing_headers, request_body, upstream_body
+from booster.invalidation import FULL_CLEAR, InvalidationBus
 
 logger = logging.getLogger("booster.proxy")
 
@@ -33,13 +34,15 @@ class RejectCookies(DefaultCookiePolicy):
 class SpeedProxyServer:
     """Accelerate public origin responses without retaining personalized bodies."""
 
-    def __init__(self, target_url: str = "http://127.0.0.1:8000") -> None:
+    def __init__(self, target_url: str = "http://127.0.0.1:8000",
+                 invalidation_bus: InvalidationBus | None = None) -> None:
         """Initialize a trusted target and resource limits."""
         self.target_url = validate_target(target_url)
         self.cache = FastMemoryCache(max_items=2000, default_ttl=300.0)
         self.compressor = ResponseCompressor(min_size=256)
         self.minifier = FastMinifier()
         self.telemetry = TelemetryTracker()
+        self.invalidation_bus = invalidation_bus
         self._client: httpx.AsyncClient | None = None
         self._requests = asyncio.Semaphore(16)
 
@@ -70,8 +73,10 @@ class SpeedProxyServer:
         path = path[5:] if path.startswith("/site/") else path
         query = request.scope.get("query_string", b"")
         mutation = request.method in {"POST", "PUT", "DELETE", "PATCH"}
+        self.apply_pending_invalidations()
         if mutation:
             self.cache.clear()
+            self.publish_invalidation(FULL_CLEAR)
         try:
             if request.method == "GET" and request_cacheable(parse_headers(request.scope.get("headers", []))):
                 response = self._check_cache(request, path, query)
@@ -82,6 +87,27 @@ class SpeedProxyServer:
         finally:
             if mutation:
                 self.cache.clear()
+                self.publish_invalidation(FULL_CLEAR)
+
+    def publish_invalidation(self, prefix: str) -> None:
+        """Tell the other workers that cached reads are no longer valid."""
+        if self.invalidation_bus is not None:
+            self.invalidation_bus.publish(prefix)
+
+    def apply_pending_invalidations(self) -> None:
+        """Apply the invalidation notices published by the other workers."""
+        if self.invalidation_bus is None:
+            return
+        for notice in self.invalidation_bus.drain():
+            if notice == FULL_CLEAR:
+                self.cache.clear()
+            else:
+                self.cache.invalidate_path_prefix(notice)
+
+    def clear_cache(self) -> None:
+        """Clear the local cache and tell the other workers to clear theirs."""
+        self.cache.clear()
+        self.publish_invalidation(FULL_CLEAR)
 
     def _check_cache(self, request: Request, path: str, query: bytes) -> Response | None:
         """Serve a public representation with the same validators on miss and hit."""

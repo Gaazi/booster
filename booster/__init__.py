@@ -9,6 +9,7 @@ from booster.compressor import ResponseCompressor
 from booster.minifier import FastMinifier
 from booster.telemetry import TelemetryTracker
 from booster.cache_policy import CachePolicy
+from booster.invalidation import FileInvalidationBus, LocalInvalidationBus
 
 if TYPE_CHECKING:
     from booster.cdn import CDNConfig, CDNManager
@@ -54,4 +55,6 @@ __all__ = [
     "CDNConfig",
     "attach",
     "CachePolicy",
+    "FileInvalidationBus",
+    "LocalInvalidationBus",
 ]
