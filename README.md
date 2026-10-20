@@ -32,6 +32,8 @@ We follow a strict 3-tier release pipeline to guarantee production stability:
 
 Before diving in, consult our architectural specifications and guides:
 - 🏛️ **[Comprehensive Features & System Architecture](docs/FEATURES_AND_ARCHITECTURE.md)** — In-depth technical breakdown of caching mechanics, HTTP RFC 9111 privacy boundaries, mutation invalidation, module map, and Mermaid request lifecycles.
+- 🧩 **[Plugin Recipe](docs/PLUGIN_RECIPE.md)** — Embed Booster as middleware inside any project: adapter file, registration order, route policy and rollout checks.
+- ✅ **[Conformance Checklist](docs/CONFORMANCE_CHECKLIST.md)** — Copy-paste privacy and correctness tests each host project runs before rollout.
 - 🛠️ **[Integration & Review Guide](docs/INTEGRATION.md)** — Safe website integration, framework setup (FastAPI, Django, Node.js), route policies, and middleware ordering.
 - 🎯 **[Workload Recommendations & Use Cases](docs/USE_CASES.md)** — Decision matrix for blogs, APIs, ecommerce, and dynamic sites.
 - 📦 **[Verified Compressed Builds](docs/BUILDS.md)** — Ready-to-install wheel/Node package downloads and verification.

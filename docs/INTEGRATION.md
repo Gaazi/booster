@@ -13,6 +13,14 @@ removes the retired package and command. Existing consumers must use Booster
 imports before upgrading. The Python ASGI/Django engine and Node engine are
 separate runtime implementations; Python consumers do not install Node.
 
+## Plugin recipe
+
+[PLUGIN_RECIPE.md](PLUGIN_RECIPE.md) is the step-by-step recipe for embedding
+Booster as middleware inside a host project: adapter file, registration order,
+route policy, one compression owner, worker limits and rollout verification.
+[CONFORMANCE_CHECKLIST.md](CONFORMANCE_CHECKLIST.md) is the copy-paste test file
+each host project runs to prove that private data never enters the shared cache.
+
 ## Install a reviewed revision
 
 Pin a full reviewed Git commit in the consuming application's requirements:

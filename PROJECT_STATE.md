@@ -1,13 +1,14 @@
 # Project State
-Updated: 2026-10-15 19:03
+Updated: 2026-10-20 12:40
 ## Done
-- At the user explicit request, promoted verified dev bbaa523f79583dc3d6ed7332a013404bd8d00e72 to demo by fast-forward and immediately pushed. Verified the exact-commit compressed bundle before promotion; source CI 38743133151 succeeded.
-- Demo CI 38743619845 succeeded. Requested demo-to-dev synchronization was already up to date; origin/dev and origin/demo both matched bbaa523 at the sync checkpoint. Returned to dev; this state record is a subsequent documentation-only dev commit.
-- Runtime/privacy fixes at fd7bffb make canonical TypeScript the distributed Node runtime/declarations. Legacy JavaScript is excluded from package exports/files. Review evidence: docs/REVIEW_2026-10-15.md.
-- Worker revision e57558e passed CI 38741590575 and local Python tests: 185 passed, 1 existing Starlette warning. Two actual-process tests prove local-only invalidation, credential bypass on stale peers, all-worker-clear recovery and static-only freshness.
-- Node source/installed-package suites passed 31 each. CI covers Python core 3.10, full Python 3.11/3.14 and Node 22/24, builds compressed distributions and verifies installed packages. Prior syntax, changed-file audit, diff, pip check, type checks and npm audit passed.
+- Phase 1 of the plugin rollout: `docs/PLUGIN_RECIPE.md` (embed Booster as middleware in any host project: pinned install, adapter file, registration order, route policy, one compression owner, worker limits, status/admin, verification) and `docs/CONFORMANCE_CHECKLIST.md` (copy-paste test file with five privacy/correctness checks plus manual checks).
+- Conformance template executed against a real Starlette app with Booster attached: 5/5 checks pass; the security-header check failed when the outer middleware was removed, so the checks detect real regressions.
+- Docs only: no engine change, no new public API, no new dependency. README and `docs/INTEGRATION.md` link the new guides; `plans/PLUGIN_ROLLOUT_PLAN.md` records the phased plan.
+- Pre-existing verified state unchanged: demo artifact `bbaa523`, dev at `8655226`, Python 185 tests and Node 31 tests last recorded green.
 ## Pending
-- Shared invalidation remains unimplemented: exclude mutable cached routes with multiple workers until coordination is tested. Physical-phone/production checks and complete Node/framework/HTTP parity remain unproven. Existing nonfatal warnings remain.
-- No main merge, production deployment or restart performed. Invite remains with its agent.
+- Phase 2 host pilot: apply the recipe in one FastAPI host (static-only policy, existing compression owner) and record measured cold/warm p50/p95, origin call counts, payload sizes and RAM.
+- Shared invalidation between workers still unimplemented; exclude mutable cached routes until coordination is implemented and tested.
+- Node/framework/HTTP full parity, physical-phone verification and operator bypass-reason reporting remain unproven.
+- No `main` merge, production deployment or restart performed; those need a current explicit request.
 ## Next Step
-- Use the verified bbaa523 compressed artifact on demo for deliberate consumer integration; measure real workloads and physical-phone performance. Any later promotion or production change requires a new explicit request.
+- Run the Phase 2 pilot against the host FastAPI project: adapter file plus one registration line, then the conformance checklist and a before/after measurement. Phase 3 (shared config/adapters) only after two or more hosts need the same boilerplate.
