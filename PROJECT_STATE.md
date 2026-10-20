@@ -1,17 +1,18 @@
 # Project State
-Updated: 2026-10-20 14:45
+Updated: 2026-10-20 15:40
 ## Done
-- Phase 1 (commit e82d78d): `docs/PLUGIN_RECIPE.md`, `docs/CONFORMANCE_CHECKLIST.md`, `plans/PLUGIN_ROLLOUT_PLAN.md`, README and `docs/INTEGRATION.md` links. The checklist was executed against a temporary Starlette app: 5/5 pass, and the security-header check fails when the outer middleware is removed.
-- Phase 2 (commit cc48328): `examples/host_app.py`, `examples/measure_host.py` and `tests/test_host_conformance.py` (the checklist runs in CI). Python suite after the change: 190 passed.
-- Phase 2 host pilot on a real consumer: the DMS FastAPI project embeds Booster as a plugin. The pilot found the real integration trap: a site that sets its browser cache policy in an outer middleware leaves the engine with no public policy, so the static mount must repeat it. DMS suite 319 passed, live dev site healthy. DMS commits 029f0bd1 and 1981d22d on `dev` only.
-- Consumption path (commit cd1a4f6): `booster init` scaffolds a ready-to-edit `booster_plugin.py` into any host project; standard library only, never overwrites existing work. README, plugin recipe and integration guide show the GitHub install plus `booster init` flow. Suite 194 passed, CI green.
-- Shared invalidation (opt-in): new `booster/invalidation.py` with `InvalidationBus`, `LocalInvalidationBus` and `FileInvalidationBus`. `RocketBooster` and `SpeedProxyServer` accept `invalidation_bus`, publish their own invalidation scope and apply peer notices before serving a request. The admin clear endpoint now reaches every worker. `get_status()` reports `shared` or `process`. Default behaviour is unchanged: no bus means the documented process-local boundary.
-- Two real worker processes prove the peer returns the fresh body after the other worker wrote, and that the process-local behaviour stays identical without a bus (`tests/test_shared_invalidation.py`, 6 tests). Python suite: 200 passed.
+- Phase 1 (e82d78d) plugin recipe and conformance checklist; Phase 2 (cc48328) reference host that runs the checklist in CI; DMS host pilot (DMS commits 029f0bd1, 1981d22d on `dev` only) with 319 passing tests and a healthy live dev site.
+- Consumption path (cd1a4f6): `booster init` scaffolds a ready-to-edit `booster_plugin.py` into any host project, never overwrites existing work, standard library only.
+- Shared invalidation (724e060): `booster/invalidation.py` with the bus protocol, a local no-op and a file-backed bus for workers on one host. `RocketBooster` and `SpeedProxyServer` accept `invalidation_bus`, publish their own invalidation scope and apply peer notices before serving; the admin clear now reaches every worker; `get_status()` reports `shared` or `process`. Two real worker processes prove the peer returns fresh bytes after the other worker wrote, and the process-local behaviour is unchanged without a bus.
+- Declarative site configuration (72e0a53): `booster/site_config.py` reads one JSON file into a `SiteConfig`, rejects unknown keys, relative prefixes and non-positive limits, and `booster init --config` writes the matching `booster.json` that the generated adapter prefers.
+- Operator visibility (cb35078): `booster/bypass.py` counts fixed reason names for every response that was not stored; `metrics["bypass_reasons"]` explains a route without recording any cookie, token, path or payload.
+- Node parity: the Node engine gained the same features - `bypass.ts` reason counters, `status.ts` operator snapshot with `middleware.status()`, `invalidation.ts` file bus, and request/response reason recording. Node suite 36 passed (was 31), TypeScript build and strict type check pass.
+- Python suite 216 passed, 1 existing Starlette deprecation warning. `CODEMAP.md` regenerated with `refresh_docs.py`.
 ## Pending
 - The engine is not installed on any server. The DMS deploy kit runs git, rsync, migrate, restart and a health check but never `pip install`, so installing the pinned package needs one explicit operator action inside the cPanel virtualenv.
-- The shared invalidation bus is proven on one host with two processes; it is not proven with a real load balancer, a network file system or a container restart.
-- Node/framework/HTTP full parity, physical-phone verification and operator bypass-reason reporting remain unproven.
-- Phase 3 shared abstraction (config-driven site policy, standard-library only) is deferred until two or more hosts need the same boilerplate.
+- The shared invalidation bus is proven with two local processes and two Node engines on one host; it is not proven with a real load balancer, a network file system or a container restart.
+- Physical-phone verification and a measured public-network comparison are still missing; only in-process numbers exist.
+- Node still has no declarative JSON site configuration like the Python engine; its options object covers the same settings.
 - No `main` merge, production deployment or restart performed; those need a current explicit request.
 ## Next Step
-- Continue the remaining plan: declarative site configuration, operator bypass reasons in the status snapshot, then the Node parity gaps.
+- Confirm the whole consumption path with one more independent host project, then run the conformance checklist and a measured comparison on a real device and network before any rollout.

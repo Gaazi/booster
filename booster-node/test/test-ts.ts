@@ -5,6 +5,7 @@ import zlib from "node:zlib";
 import { booster, FastMemoryCache, ResponseCompressor, FastMinifier, isStaticAsset } from "./engine.ts";
 import type { BoosterOptions } from "../src/index.ts";
 import { request as rawRequest, fixture } from "./cache-regressions.ts";
+import "./parity.ts";
 
 test("FastMemoryCache - set, get, etag, and expiry", async () => {
   const cache = new FastMemoryCache(10, 0.05); // 50ms TTL

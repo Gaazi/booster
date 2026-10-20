@@ -24,6 +24,11 @@ adapter file into the host project, and `--config` adds a `booster.json` that
 [CONFORMANCE_CHECKLIST.md](CONFORMANCE_CHECKLIST.md) is the copy-paste test file
 each host project runs to prove that private data never enters the shared cache.
 
+The Node engine provides the same operator features: `middleware.status()`
+returns the snapshot, `metrics.bypassReasons` counts why a response was not
+stored, and `FileInvalidationBus` gives workers on one host the same shared
+invalidation. See [booster-node/README.md](../booster-node/README.md).
+
 ## Install a reviewed revision
 
 Pin a full reviewed Git commit in the consuming application's requirements:

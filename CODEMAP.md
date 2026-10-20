@@ -4,34 +4,48 @@ Generated with `python refresh_docs.py`.
 
 ## booster/__init__.py
 
-- `__getattr__` (line 31): Load optional integrations only when requested, preserving public exports.
+- `__getattr__` (line 33): Load optional integrations only when requested, preserving public exports.
 
 ## booster/asgi_response.py
 
-- `parse_headers` (line 9): Combine repeated fields so restrictive cache directives cannot be hidden.
-- `ASGIResponseOptimizer` (line 19): Capture one bounded response and optimize public or dynamic representations.
-- `representation_headers` (line 125): Replace length, validators and negotiation fields after changing a body.
-- `__init__` (line 22): Keep request state separate from the shared middleware instance.
-- `__call__` (line 32): Forward streams and extensions immediately, optimizing a single body.
-- `_start_response` (line 49): Decide eligibility once using both request and response privacy rules.
-- `_collect_body` (line 64): Buffer bounded public static files while forwarding dynamic streams promptly.
-- `_optimized_cacheable` (line 83): Minify and compress public bytes, preserving unrelated response fields.
-- `_optimized_dynamic` (line 104): Compress private dynamic bytes without storing in shared cache.
+- `parse_headers` (line 10): Combine repeated fields so restrictive cache directives cannot be hidden.
+- `ASGIResponseOptimizer` (line 20): Capture one bounded response and optimize public or dynamic representations.
+- `representation_headers` (line 149): Replace length, validators and negotiation fields after changing a body.
+- `__init__` (line 23): Keep request state separate from the shared middleware instance.
+- `__call__` (line 33): Forward streams and extensions immediately, optimizing a single body.
+- `_start_response` (line 50): Decide eligibility once using both request and response privacy rules.
+- `_record_response_reason` (line 67): Explain why an eligible request was not stored.
+- `_collect_body` (line 77): Buffer bounded public static files while forwarding dynamic streams promptly.
+- `_record_body_reason` (line 97): Explain why an eligible response body was not buffered.
+- `_optimized_cacheable` (line 106): Minify and compress public bytes, preserving unrelated response fields.
+- `_optimized_dynamic` (line 128): Compress private dynamic bytes without storing in shared cache.
 
 ## booster/booster.py
 
-- `RocketBooster` (line 17): Accelerate public and static responses and adaptively optimize dynamic traffic.
-- `__init__` (line 20): Initialize bounded caches or share the instance exposed by attach.
-- `attach` (line 45): Register middleware and expose the cache actually serving the app.
-- `cache_key` (line 53): Isolate representations by scheme, host, path and query.
-- `__call__` (line 60): Accelerate static and public reads, optimize dynamic responses, and handle mutations.
-- `_handle_mutation` (line 87): Invalidate before and after writes, including failed or concurrent writes.
-- `_invalidate` (line 96): Keep full invalidation safe by default for cross-route dependencies.
-- `_handle_get` (line 103): Serve a public cached representation or its conditional response.
-- `_send_304` (line 127): Retain origin cache and security headers on conditional cache hits.
-- `_send_cached` (line 136): Send cached content with validators matching the transformed bytes.
-- `_passthrough_and_cache` (line 144): Optimize a bounded response while respecting ASGI streaming semantics.
-- `get_status` (line 149): Return a host-dashboard snapshot without credentials, URLs or payloads.
+- `RocketBooster` (line 24): Accelerate public and static responses and adaptively optimize dynamic traffic.
+- `__init__` (line 27): Initialize bounded caches or share the instance exposed by attach.
+- `attach` (line 55): Register middleware and expose the cache actually serving the app.
+- `cache_key` (line 63): Isolate representations by scheme, host, path and query.
+- `__call__` (line 70): Accelerate static and public reads, optimize dynamic responses, and handle mutations.
+- `_bypass_reason` (line 100): Explain why this request may not use the shared cache.
+- `_handle_mutation` (line 110): Invalidate before and after writes, including failed or concurrent writes.
+- `_invalidate` (line 120): Keep full invalidation safe by default for cross-route dependencies.
+- `publish_invalidation` (line 129): Tell the other workers that cached reads are no longer valid.
+- `apply_pending_invalidations` (line 134): Apply the invalidation notices published by the other workers.
+- `clear_cache` (line 144): Clear the local cache and tell the other workers to clear theirs.
+- `_handle_get` (line 149): Serve a public cached representation or its conditional response.
+- `_send_304` (line 173): Retain origin cache and security headers on conditional cache hits.
+- `_send_cached` (line 182): Send cached content with validators matching the transformed bytes.
+- `_passthrough_and_cache` (line 190): Optimize a bounded response while respecting ASGI streaming semantics.
+- `get_status` (line 195): Return a host-dashboard snapshot without credentials, URLs or payloads.
+
+## booster/bypass.py
+
+- `BypassTracker` (line 25): Accumulate bounded reason counters for the served responses.
+- `__init__` (line 28): Start with empty counters.
+- `record` (line 33): Count one decision for a served response.
+- `get_counts` (line 38): Return the reason counters as a stable sorted mapping.
+- `reset` (line 43): Clear every counter.
 
 ## booster/cache.py
 
@@ -75,7 +89,8 @@ Generated with `python refresh_docs.py`.
 
 ## booster/cli.py
 
-- `main` (line 4): Delegate to the server without loading its dependencies on core import.
+- `run_init` (line 8): Generate a Booster adapter inside the host project.
+- `main` (line 31): Delegate to the server without loading its dependencies on core import.
 
 ## booster/compressor.py
 
@@ -104,6 +119,27 @@ Generated with `python refresh_docs.py`.
 - `filtered_headers` (line 69): Remove hop-by-hop fields including fields nominated by Connection.
 - `merge_vary` (line 77): Preserve existing negotiation fields while adding compression.
 
+## booster/initializer.py
+
+- `render_paths` (line 73): Render a path tuple for the generated module.
+- `render_adapter` (line 80): Render the adapter source for the requested route policy.
+- `write_adapter` (line 86): Write the adapter into a host project without overwriting existing work.
+- `write_config` (line 97): Write the matching JSON site configuration into a host project.
+
+## booster/invalidation.py
+
+- `InvalidationBus` (line 16): Publish and observe invalidation notices.
+- `LocalInvalidationBus` (line 26): Keep invalidation inside the current process.
+- `FileInvalidationBus` (line 36): Exchange notices through one shared file, for workers on the same host.
+- `publish` (line 19): Publish one notice for the other workers.
+- `drain` (line 22): Return the notices published since the last drain.
+- `publish` (line 29): Ignore the notice because no other worker exists.
+- `drain` (line 32): Return no notices.
+- `__init__` (line 45): Open the shared notice file for reading and later appending.
+- `publish` (line 53): Append one notice for the other workers.
+- `drain` (line 59): Read the notices written since the last drain.
+- `_truncate_if_large` (line 66): Truncate the notice file so it cannot grow without bound.
+
 ## booster/local_security.py
 
 - `validate_target` (line 14): Reject credentials, malformed ports, special networks and gateway loops.
@@ -123,18 +159,21 @@ Generated with `python refresh_docs.py`.
 
 ## booster/proxy.py
 
-- `RejectCookies` (line 25): Never retain upstream credentials in a shared connection pool.
-- `SpeedProxyServer` (line 33): Accelerate public origin responses without retaining personalized bodies.
-- `set_ok` (line 28): Reject every upstream cookie; clients manage their own cookie state.
-- `__init__` (line 36): Initialize a trusted target and resource limits.
-- `get_client` (line 46): Reuse connections without environment proxies or a shared cookie jar.
-- `set_target` (line 55): Validate a new origin and invalidate pending and stored representations.
-- `_key` (line 61): Keep scheme, host and encoded path representations separate.
-- `handle_request` (line 67): Route requests and invalidate all derived reads around mutations.
-- `_check_cache` (line 86): Serve a public representation with the same validators on miss and hit.
-- `_fetch_and_cache` (line 102): Fetch one raw origin response with upload and buffering limits.
-- `_prepare_response` (line 130): Transform only explicitly public responses and preserve repeated headers.
-- `close` (line 149): Release upstream pooled connections on shutdown.
+- `RejectCookies` (line 26): Never retain upstream credentials in a shared connection pool.
+- `SpeedProxyServer` (line 34): Accelerate public origin responses without retaining personalized bodies.
+- `set_ok` (line 29): Reject every upstream cookie; clients manage their own cookie state.
+- `__init__` (line 37): Initialize a trusted target and resource limits.
+- `get_client` (line 49): Reuse connections without environment proxies or a shared cookie jar.
+- `set_target` (line 58): Validate a new origin and invalidate pending and stored representations.
+- `_key` (line 64): Keep scheme, host and encoded path representations separate.
+- `handle_request` (line 70): Route requests and invalidate all derived reads around mutations.
+- `publish_invalidation` (line 92): Tell the other workers that cached reads are no longer valid.
+- `apply_pending_invalidations` (line 97): Apply the invalidation notices published by the other workers.
+- `clear_cache` (line 107): Clear the local cache and tell the other workers to clear theirs.
+- `_check_cache` (line 112): Serve a public representation with the same validators on miss and hit.
+- `_fetch_and_cache` (line 128): Fetch one raw origin response with upload and buffering limits.
+- `_prepare_response` (line 156): Transform only explicitly public responses and preserve repeated headers.
+- `close` (line 175): Release upstream pooled connections on shutdown.
 
 ## booster/proxy_transport.py
 
@@ -162,6 +201,18 @@ Generated with `python refresh_docs.py`.
 - `main` (line 146): Launch the local dashboard and acceleration gateway.
 - `serve_local` (line 159): Run dashboard and gateway on separate origins with shared lifecycle.
 - `stop_servers` (line 171): Stop both origins together on a terminal interrupt or termination.
+
+## booster/site_config.py
+
+- `SiteConfig` (line 29): One site's route policy and cache limits.
+- `attach_from_config` (line 83): Attach the engine to an application using a declarative configuration.
+- `_paths` (line 93): Validate a list of absolute route prefixes.
+- `_optional_paths` (line 103): Validate an optional list of absolute route prefixes.
+- `_positive_number` (line 110): Validate a positive numeric setting.
+- `from_dict` (line 42): Build a configuration from a mapping and reject unknown settings.
+- `from_file` (line 60): Read a configuration from a JSON file.
+- `cache_policy` (line 67): Build the route policy for this site.
+- `attach_options` (line 71): Build the keyword arguments for the engine attach call.
 
 ## booster/telemetry.py
 
@@ -224,6 +275,13 @@ Generated with `python refresh_docs.py`.
 - `setup_environment` (line 26): Install dependencies only on first use or when project requirements change.
 - `main` (line 43): Prepare the plugin, optionally check setup, and open the local dashboard.
 
+## booster-node/src/bypass.ts
+
+- `BypassTracker` (line 17): Count why a response was not stored, without recording any request data.
+- `record` (line 21): Count one decision for a served response.
+- `getCounts` (line 26): Return the reason counters as a stable sorted mapping.
+- `reset` (line 31): Clear every counter.
+
 ## booster-node/src/cache.ts
 
 - `CacheHeaders` (line 5): TypeScript declaration.
@@ -254,9 +312,12 @@ Generated with `python refresh_docs.py`.
 
 ## booster-node/src/engine-types.ts
 
-- `BoosterOptions` (line 6): TypeScript declaration.
-- `EngineState` (line 19): TypeScript declaration.
-- `ResponseContext` (line 25): TypeScript declaration.
+- `BoosterOptions` (line 9): TypeScript declaration.
+- `BoosterMiddleware` (line 22): TypeScript declaration.
+- `status` (line 25): Return an operator snapshot without cache keys, payloads or request data.
+- `EngineCounters` (line 27): TypeScript declaration.
+- `EngineState` (line 32): TypeScript declaration.
+- `ResponseContext` (line 42): TypeScript declaration.
 
 ## booster-node/src/header-guard.ts
 
@@ -265,11 +326,26 @@ Generated with `python refresh_docs.py`.
 
 ## booster-node/src/index.ts
 
-- `isStaticAsset` (line 18): Classify assets for callers; extensions never override credential privacy.
-- `trackMutation` (line 25): Clear before/after mutations and invalidate older in-flight capture contexts.
-- `invalidate` (line 27): TypeScript declaration.
-- `booster` (line 33): Construct one bounded engine while preserving the existing middleware API.
-- `return` (line 38): TypeScript declaration.
+- `isStaticAsset` (line 27): Classify assets for callers; extensions never override credential privacy.
+- `trackMutation` (line 34): Clear before/after mutations and invalidate older in-flight capture contexts.
+- `invalidate` (line 40): TypeScript declaration.
+- `applyPendingInvalidations` (line 46): Apply the invalidation notices published by the other workers.
+- `bypassReason` (line 54): Record why this request may not use the shared cache.
+- `booster` (line 63): Construct one bounded engine while preserving the existing middleware API.
+
+## booster-node/src/invalidation.ts
+
+- `InvalidationBus` (line 8): Publish and observe invalidation notices.
+- `publish` (line 9): TypeScript declaration.
+- `drain` (line 10): TypeScript declaration.
+- `LocalInvalidationBus` (line 14): Keep invalidation inside the current process.
+- `publish` (line 16): Ignore the notice because no other worker exists.
+- `drain` (line 18): Return no notices.
+- `FileInvalidationBus` (line 22): Exchange notices through one shared file, for workers on the same host.
+- `constructor` (line 29): Open the shared notice file for reading and later appending.
+- `publish` (line 38): Append one notice for the other workers.
+- `drain` (line 44): Read the notices written since the last drain.
+- `close` (line 56): Release the notice file handle.
 
 ## booster-node/src/minifier.ts
 
@@ -291,16 +367,21 @@ Generated with `python refresh_docs.py`.
 
 ## booster-node/src/response.ts
 
-- `varyEncoding` (line 10): Merge encoding variation without erasing the host's existing Vary fields.
-- `canTransform` (line 17): Skip encoded, partial, explicitly immutable or oversized transformations.
-- `compress` (line 27): Negotiate compression consistently on cold responses and warm hits.
-- `varyEncoding` (line 30): TypeScript declaration.
-- `storeBody` (line 40): Store immutable origin bytes only while the request's mutation epoch matches.
-- `edgePolicy` (line 48): TypeScript declaration.
-- `serveCached` (line 53): Replay validators and security headers, including body-free conditional hits.
-- `edgePolicy` (line 61): TypeScript declaration.
-- `interceptResponse` (line 76): Preserve stream/callback behavior without retaining any streamed chunks.
-- `guardExplicitHeaders` (line 80): TypeScript declaration.
+- `varyEncoding` (line 11): Merge encoding variation without erasing the host's existing Vary fields.
+- `canTransform` (line 18): Skip encoded, partial, explicitly immutable or oversized transformations.
+- `compress` (line 28): Negotiate compression consistently on cold responses and warm hits.
+- `varyEncoding` (line 31): TypeScript declaration.
+- `storeBody` (line 41): Store immutable origin bytes only while the request's mutation epoch matches.
+- `edgePolicy` (line 57): TypeScript declaration.
+- `serveCached` (line 63): Replay validators and security headers, including body-free conditional hits.
+- `edgePolicy` (line 71): TypeScript declaration.
+- `interceptResponse` (line 86): Preserve stream/callback behavior without retaining any streamed chunks.
+- `guardExplicitHeaders` (line 90): TypeScript declaration.
+
+## booster-node/src/status.ts
+
+- `StatusSnapshot` (line 6): TypeScript declaration.
+- `buildStatus` (line 25): Build the snapshot for one running engine.
 
 ```mermaid
 graph TD
@@ -310,17 +391,23 @@ graph TD
   __init__ --> cdn
   __init__ --> compressor
   __init__ --> django_support
+  __init__ --> invalidation
   __init__ --> minifier
   __init__ --> proxy
+  __init__ --> site_config
   __init__ --> telemetry
+  asgi_response --> bypass
   asgi_response --> http_policy
   booster --> asgi_response
+  booster --> bypass
   booster --> cache
   booster --> cache_policy
   booster --> compressor
   booster --> http_policy
+  booster --> invalidation
   booster --> minifier
   booster --> telemetry
+  cli --> initializer
   cli --> server
   django_support --> cache
   django_support --> compressor
@@ -332,6 +419,7 @@ graph TD
   proxy --> cache
   proxy --> compressor
   proxy --> http_policy
+  proxy --> invalidation
   proxy --> local_security
   proxy --> minifier
   proxy --> proxy_transport
@@ -342,5 +430,6 @@ graph TD
   server --> local_security
   server --> proxy
   server --> updater
+  site_config --> cache_policy
   telemetry --> cache
 ```

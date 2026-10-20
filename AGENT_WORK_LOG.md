@@ -29,6 +29,16 @@
 - Pending: server-side install (operator action), live measurement, shared invalidation between workers, Node parity, physical-phone verification.
 - Commits: see `git log` on `dev`. Branch policy: `dev` only, no `main`/`demo` merge, no deployment.
 
+## 2026-10-20 — Remaining plan: shared invalidation, site config, operator visibility, Node parity
+
+- Agent/model: OpenCode (MiniMax M3.1 Flash Free)
+- Scope reviewed: focused (the four remaining plan items), not a full-project review.
+- Done, four focused commits on `dev`: `724e060` shared invalidation bus for the Python engine, `72e0a53` declarative JSON site configuration, `cb35078` bypass reason counters, and the Node parity commit with `bypass.ts`, `status.ts` and `invalidation.ts`.
+- Checks: Python suite 216 passed, 1 existing Starlette deprecation warning; Node suite 36 passed (was 31); TypeScript build and strict type check pass; `CODEMAP.md` regenerated with `refresh_docs.py`; relative doc links resolve.
+- Findings worth keeping: Node's strip-only TypeScript mode rejects constructor parameter properties, so the file bus stores its fields explicitly; two engines must open their own bus instance on the shared file, because one shared reader position would let one worker consume the other worker's notice.
+- Pending: server-side install (operator action), physical-phone and network measurement, Node declarative configuration, no `main` merge and no deployment.
+- Commits: see `git log` on `dev`. Branch policy: `dev` only, no `main`/`demo` merge, no deployment.
+
 ## 2026-10-20 — Consumption path: `booster init` scaffolding command
 
 - Agent/model: OpenCode (MiniMax M3.1 Flash Free)

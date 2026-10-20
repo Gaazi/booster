@@ -17,6 +17,32 @@ before rollout; Next.js and Fastify are not automatic drop-in integrations.
 - Avoid retaining streamed chunks. Clear before/after writes and reject captures
   from earlier mutation generations. Multiple workers still require coordination.
 
+## Operator snapshot and shared invalidation
+
+```typescript
+import {booster, FileInvalidationBus} from "booster-node";
+
+const middleware = booster({
+  invalidationBus: new FileInvalidationBus("/var/run/booster/notices.log"),
+});
+app.use(middleware);
+
+middleware.status();
+// { version, cache: {items, bytes, maxItems, maxCacheBytes},
+//   metrics: {totalRequests, cacheHits, cacheMisses, hitRatioPercent, bypassReasons},
+//   configuration: {ttlSeconds, compressDynamic, maxCacheBytes, invalidation} }
+```
+
+`bypassReasons` counts why a response was not stored (`credentialed_request`,
+`route_not_selected`, `response_not_public`, `request_directive`,
+`method_not_read`, `streamed_response`, `body_too_large`). Only fixed reason
+names are recorded: no cookie, token, path or payload.
+
+The invalidation bus lets workers on one host apply each other's invalidation.
+Every worker opens its own bus on the shared file, so one worker never consumes
+another worker's notice. Without a bus the engine keeps its documented
+process-local behaviour.
+
 ## TypeScript integration
 
 Install a reviewed CI tarball in the consuming project. Development source and
