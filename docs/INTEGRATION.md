@@ -94,10 +94,15 @@ secrets and when another layer already owns compression.
 
 Use `engine.get_status()` for the shared version, configuration, cache memory
 and processed-response counters. It exposes no cache keys, payloads or request
-logs. The host website must authorize an administrator before reading this
-snapshot or calling `engine.cache.clear()`. Keep both actions under its existing
-owner dashboard, and apply the host's private/no-store and CSRF/origin policies.
-Do not mount the standalone dashboard or proxy on the public website.
+logs. `metrics["bypass_reasons"]` counts why a response was not stored, for
+example `credentialed_request`, `route_not_selected`, `response_not_public`,
+`request_directive`, `method_not_read`, `streamed_response` or
+`body_too_large`. The counters hold fixed reason names only: no cookie, token,
+path or payload is recorded. The host website must authorize an administrator
+before reading this snapshot or calling `engine.cache.clear()`. Keep both
+actions under its existing owner dashboard, and apply the host's
+private/no-store and CSRF/origin policies. Do not mount the standalone
+dashboard or proxy on the public website.
 
 Counters describe responses processed by Booster, not browser page-load times.
 Resident memory includes entries awaiting lazy expiry. With external compression

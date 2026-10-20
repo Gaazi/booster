@@ -152,9 +152,13 @@ short TTL bounds how long a stale entry can live, but does not remove it.
 ## 7. Status and administration
 
 `engine.get_status()` returns configuration and counters without cache keys,
-payloads, tokens or URLs. Expose it only behind the host's own admin
-authentication. `engine.cache.clear()` clears the current worker only. Never
-mount the standalone dashboard or proxy on a public site.
+payloads, tokens or URLs. Its `metrics["bypass_reasons"]` counters explain why
+a response was not stored (`credentialed_request`, `route_not_selected`,
+`response_not_public`, `request_directive`, `method_not_read`,
+`streamed_response`, `body_too_large`), so an operator can see whether a
+route is cached without reading any request data. Expose it only behind the
+host's own admin authentication. `engine.cache.clear()` clears the current
+worker only. Never mount the standalone dashboard or proxy on a public site.
 
 ## 8. Verify before rollout
 

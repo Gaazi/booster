@@ -11,6 +11,12 @@ from booster.minifier import FastMinifier
 from booster.telemetry import TelemetryTracker
 from booster.cache_policy import CachePolicy
 from booster.invalidation import FULL_CLEAR, InvalidationBus
+from booster.bypass import BypassTracker
+from booster.bypass import CREDENTIALS as BYPASS_CREDENTIALS
+from booster.bypass import METHOD as BYPASS_METHOD
+from booster.bypass import PERSONALIZED as BYPASS_PERSONALIZED
+from booster.bypass import POLICY as BYPASS_POLICY
+from booster.bypass import REQUEST_DIRECTIVE as BYPASS_REQUEST_DIRECTIVE
 
 parse_asgi_headers = parse_headers
 
@@ -37,6 +43,7 @@ class RocketBooster:
         self.compressor = ResponseCompressor(min_size=min_compress_size)
         self.minifier = FastMinifier()
         self.telemetry = TelemetryTracker()
+        self.bypass = BypassTracker()
         self.enable_minification = enable_minification
         self.enable_compression = enable_compression
         self.compress_dynamic = compress_dynamic
@@ -73,11 +80,13 @@ class RocketBooster:
             return
         headers = parse_headers(scope.get("headers", []))
         if method != "GET" or not self.cache_policy.allows(path):
+            self.bypass.record(BYPASS_METHOD if method != "GET" else BYPASS_POLICY)
             await self.app(scope, receive, send)
             return
 
-        if (not request_cacheable(headers)
-                or any(scope.get(key) for key in ("user", "auth", "session"))):
+        reason = self._bypass_reason(scope, headers)
+        if reason is not None:
+            self.bypass.record(reason)
             if self.compress_dynamic:
                 await self._passthrough_and_cache(scope, receive, send, path, headers)
             else:
@@ -88,9 +97,20 @@ class RocketBooster:
             return
         await self._passthrough_and_cache(scope, receive, send, path, headers)
 
+    def _bypass_reason(self, scope: dict[str, Any], headers: dict[str, str]) -> str | None:
+        """Explain why this request may not use the shared cache."""
+        if any(scope.get(key) for key in ("user", "auth", "session")):
+            return BYPASS_PERSONALIZED
+        if headers.get("cookie") or headers.get("authorization"):
+            return BYPASS_CREDENTIALS
+        if not request_cacheable(headers):
+            return BYPASS_REQUEST_DIRECTIVE
+        return None
+
     async def _handle_mutation(self, scope: dict[str, Any], receive: Callable, send: Callable) -> None:
         """Invalidate before and after writes, including failed or concurrent writes."""
         path = scope.get("path", "/")
+        self.bypass.record(BYPASS_METHOD)
         self._invalidate(path)
         try:
             await self.app(scope, receive, send)
@@ -177,6 +197,7 @@ class RocketBooster:
         from booster import __version__
         metrics = self.telemetry.get_stats()
         metrics.pop("recent_logs", None)
+        metrics["bypass_reasons"] = self.bypass.get_counts()
         return {
             "active": True, "version": __version__, "cache": self.cache.get_stats(),
             "metrics": metrics,
