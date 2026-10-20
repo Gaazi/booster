@@ -12,6 +12,10 @@ Run with:
 python -m pytest -q tests/test_booster_conformance.py
 ```
 
+This exact checklist runs on every CI build against the reference host in
+`examples/host_app.py` (`tests/test_host_conformance.py`), so the template
+cannot silently rot.
+
 ```python
 """Booster conformance checks for a host application."""
 

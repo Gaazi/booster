@@ -118,6 +118,11 @@ mount the standalone dashboard or proxy on a public site.
 Local RAM timings do not prove mobile network or production loading speed.
 Report measured results only.
 
+A working reference implementation lives in this repository:
+`examples/host_app.py` (adapter, route policy and registration order),
+`examples/measure_host.py` (before/after measurement) and
+`tests/test_host_conformance.py` (the checklist executed on every CI run).
+
 ## Django
 
 ```python
