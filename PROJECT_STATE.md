@@ -16,3 +16,4 @@ Updated: 2026-10-20 15:40
 - No `main` merge, production deployment or restart performed; those need a current explicit request.
 ## Next Step
 - Confirm the whole consumption path with one more independent host project, then run the conformance checklist and a measured comparison on a real device and network before any rollout.
+- The legacy `booster-node/src/*.js` mirrors stay untouched on purpose: the earlier review kept them for history, they are not built, tested or published, and the project mandate forbids editing JavaScript. The Node README now states this.

@@ -4,6 +4,10 @@ A zero-runtime-dependency cache and compression middleware for Express/Connect
 style applications and native Node HTTP servers. Test your framework adapter
 before rollout; Next.js and Fastify are not automatic drop-in integrations.
 
+The canonical runtime is the TypeScript source in `src/*.ts`. The legacy
+`src/*.js` files are unused mirrors kept for history; they are not built, not
+tested and not published, so do not edit them.
+
 ## Safety and operation
 
 - Cache only explicitly public GET responses. Cookies, credentials, host user
