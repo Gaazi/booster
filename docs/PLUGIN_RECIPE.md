@@ -16,6 +16,14 @@ Pin the exact reviewed commit. Never install a moving branch in production.
 
 ## 2. One adapter file in the host project
 
+The installed command writes this file for you:
+
+```bash
+booster init --path . --include /static/css/ --include /static/js/ --exclude /media/
+```
+
+Or write it by hand:
+
 ```python
 # myapp/booster_plugin.py
 import booster

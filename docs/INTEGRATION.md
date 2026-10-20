@@ -18,6 +18,8 @@ separate runtime implementations; Python consumers do not install Node.
 [PLUGIN_RECIPE.md](PLUGIN_RECIPE.md) is the step-by-step recipe for embedding
 Booster as middleware inside a host project: adapter file, registration order,
 route policy, one compression owner, worker limits and rollout verification.
+The installed command `booster init --path . --include /static/` writes the
+adapter file into the host project.
 [CONFORMANCE_CHECKLIST.md](CONFORMANCE_CHECKLIST.md) is the copy-paste test file
 each host project runs to prove that private data never enters the shared cache.
 

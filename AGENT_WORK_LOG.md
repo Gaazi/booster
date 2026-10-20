@@ -28,3 +28,13 @@
 - Findings worth keeping: the site sets its browser cache policy in an outer middleware, so the engine sees no public policy and stores nothing until the static mount repeats it; Starlette reports the mounted path in `scope["path"]` with `root_path` set separately; the deploy kit never runs `pip install`, so a pushed dependency does not reach the server by itself.
 - Pending: server-side install (operator action), live measurement, shared invalidation between workers, Node parity, physical-phone verification.
 - Commits: see `git log` on `dev`. Branch policy: `dev` only, no `main`/`demo` merge, no deployment.
+
+## 2026-10-20 — Consumption path: `booster init` scaffolding command
+
+- Agent/model: OpenCode (MiniMax M3.1 Flash Free)
+- Scope reviewed: focused (consumption path for host projects), not a full-project review.
+- Done: added `booster/initializer.py` and the `booster init` command that writes a ready-to-edit `booster_plugin.py` into any host project; documented the GitHub install plus `booster init` flow in the README, `docs/PLUGIN_RECIPE.md` and `docs/INTEGRATION.md`; recorded the outcome in `PROJECT_STATE.md`.
+- Checks: `python -m pytest -q` -> 194 passed, 1 existing Starlette deprecation warning; `tests/test_initializer.py` -> 4 passed, including a real `python -m booster.cli init` run; generated adapter compiles, exposes `attach_booster` and refuses to overwrite an existing file.
+- Constraints kept: the new module uses only the standard library, so core stays dependency free and the standalone server path is unchanged; no engine behaviour change.
+- Pending: shared invalidation between workers, Node parity, physical-phone verification, server-side install (operator action).
+- Commits: see `git log` on `dev`. Branch policy: `dev` only, no `main`/`demo` merge, no deployment.

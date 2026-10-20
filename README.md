@@ -135,6 +135,45 @@ app.listen(3000, () => console.log('Listening on :3000'));
 
 ---
 
+### 4. Use Booster Inside Your Own Project (recommended for production)
+
+Install the reviewed revision from GitHub and let the command scaffold the
+adapter for you:
+
+```bash
+pip install "booster @ git+https://github.com/Gaazi/booster.git@<REVIEWED_COMMIT>"
+booster init --path . --include /static/css/ --include /static/js/ --exclude /media/
+```
+
+`booster init` writes a `booster_plugin.py` file into your project. Register it
+**before** your other middleware so Booster stays the innermost layer and the
+security, CORS, session and compression layers still run on every request:
+
+```python
+from booster_plugin import attach_booster
+
+app = FastAPI()
+attach_booster(app)      # Booster first: it stays the innermost layer
+setup_middlewares(app)   # security, CORS, session, compression after
+```
+
+Then run the [conformance checklist](docs/CONFORMANCE_CHECKLIST.md) in your own
+test suite and measure before/after numbers before rollout. Full guide:
+[Plugin Recipe](docs/PLUGIN_RECIPE.md).
+
+Node projects install the same engine from GitHub:
+
+```bash
+npm install github:Gaazi/booster-node#<REVIEWED_COMMIT>
+```
+
+```javascript
+import { booster } from "booster-node";
+app.use(booster({ includePaths: ["/static/"], excludePaths: ["/api/"] }));
+```
+
+---
+
 ## 🌐 Live Hosting Deployment (Cloud, VPS & cPanel)
 
 ### A. cPanel / Shared Hosting (No Root / No Redis Needed!)
