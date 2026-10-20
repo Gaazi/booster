@@ -13,6 +13,8 @@ export interface BoosterOptions {
   compressDynamic?: boolean;
   maxCacheBytes?: number;
   invalidationBus?: InvalidationBus;
+  includePaths?: string[] | null;
+  excludePaths?: string[];
 }
 
 export type BoosterRequest = IncomingMessage & {

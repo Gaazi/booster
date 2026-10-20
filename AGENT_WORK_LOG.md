@@ -39,6 +39,16 @@
 - Pending: server-side install (operator action), physical-phone and network measurement, Node declarative configuration, no `main` merge and no deployment.
 - Commits: see `git log` on `dev`. Branch policy: `dev` only, no `main`/`demo` merge, no deployment.
 
+## 2026-10-20 — Node route policy and JSON site configuration
+
+- Agent/model: OpenCode (MiniMax M3.1 Flash Free)
+- Scope reviewed: focused (closing the last Node parity gap), not a full-project review.
+- Done: added `routeAllowed` to the Node policy module with the same matching rules as the Python `CachePolicy`, wired `includePaths`/`excludePaths` into the Node middleware, and added `site-config.ts` for the same JSON configuration with the same validation. Node suite 41 passed.
+- Checks: Node suite 41 passed; TypeScript build and strict type check pass; Python suite 216 passed; `CODEMAP.md` regenerated.
+- Finding worth keeping: the Node engine had no route policy at all, so every eligible public route was cached regardless of the site's rules; the Python engine already had `CachePolicy`.
+- Pending: server-side install (operator action), physical-phone and network measurement, no `main` merge and no deployment.
+- Commits: see `git log` on `dev`. Branch policy: `dev` only, no `main`/`demo` merge, no deployment.
+
 ## 2026-10-20 — Consumption path: `booster init` scaffolding command
 
 - Agent/model: OpenCode (MiniMax M3.1 Flash Free)

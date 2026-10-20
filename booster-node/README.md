@@ -17,6 +17,43 @@ before rollout; Next.js and Fastify are not automatic drop-in integrations.
 - Avoid retaining streamed chunks. Clear before/after writes and reject captures
   from earlier mutation generations. Multiple workers still require coordination.
 
+## Route policy and declarative configuration
+
+```typescript
+import {booster} from "booster-node";
+
+const middleware = booster({
+  includePaths: ["/static/css/", "/static/js/"],
+  excludePaths: ["/media/", "/api/"],
+});
+app.use(middleware);
+```
+
+The rules match the Python engine: an exclusion always wins, a prefix ending in
+`/` selects a subtree, any other prefix selects that exact path, an omitted
+`includePaths` allows every eligible route and an empty list selects nothing.
+
+One JSON file can describe the same site:
+
+```json
+{
+  "includePaths": ["/static/css/"],
+  "excludePaths": ["/media/"],
+  "ttl": 300,
+  "maxCacheBytes": 8388608,
+  "compressDynamic": false
+}
+```
+
+```typescript
+import {booster, loadSiteConfig, optionsFrom} from "booster-node";
+
+app.use(booster(optionsFrom(loadSiteConfig("booster.json"))));
+```
+
+An unknown key, a relative prefix or a non-positive limit is rejected with a
+clear error instead of being ignored.
+
 ## Operator snapshot and shared invalidation
 
 ```typescript

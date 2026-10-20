@@ -7,4 +7,4 @@ const location = process.env.BOOSTER_NODE_ENTRY
   : new URL("../src/index.ts", import.meta.url).href;
 const api = await import(location) as typeof PublicAPI;
 export const {booster, FastMemoryCache, CacheEntry, ResponseCompressor, FastMinifier, isStaticAsset,
-  FileInvalidationBus, LocalInvalidationBus, REASONS} = api;
+  FileInvalidationBus, LocalInvalidationBus, REASONS, loadSiteConfig, siteConfigFrom, optionsFrom} = api;

@@ -26,8 +26,10 @@ each host project runs to prove that private data never enters the shared cache.
 
 The Node engine provides the same operator features: `middleware.status()`
 returns the snapshot, `metrics.bypassReasons` counts why a response was not
-stored, and `FileInvalidationBus` gives workers on one host the same shared
-invalidation. See [booster-node/README.md](../booster-node/README.md).
+stored, `FileInvalidationBus` gives workers on one host the same shared
+invalidation, and `loadSiteConfig()` reads the same JSON site configuration
+with the same route rules. See
+[booster-node/README.md](../booster-node/README.md).
 
 ## Install a reviewed revision
 

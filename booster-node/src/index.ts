@@ -2,7 +2,7 @@
 import { FastMemoryCache, CacheEntry } from "./cache.ts";
 import { ResponseCompressor } from "./compressor.ts";
 import { FastMinifier } from "./minifier.ts";
-import { requestAllowed, responseBlocksCache } from "./policy.ts";
+import { requestAllowed, responseBlocksCache, routeAllowed } from "./policy.ts";
 import { interceptResponse, serveCached } from "./response.ts";
 import { guardExplicitHeaders } from "./header-guard.ts";
 import { BypassTracker, REASONS } from "./bypass.ts";
@@ -17,6 +17,10 @@ export { FileInvalidationBus, LocalInvalidationBus, FULL_CLEAR } from "./invalid
 export type { InvalidationBus } from "./invalidation.ts";
 export { buildStatus } from "./status.ts";
 export type { StatusSnapshot } from "./status.ts";
+export { loadSiteConfig, siteConfigFrom, optionsFrom } from "./site-config.ts";
+export type { SiteConfig } from "./site-config.ts";
+export { routeAllowed } from "./policy.ts";
+export type { RoutePolicy } from "./policy.ts";
 
 export const STATIC_EXTENSIONS: string[] = [
   ".css", ".js", ".mjs", ".woff", ".woff2", ".ttf", ".eot", ".otf",
@@ -70,11 +74,14 @@ export function booster(options: BoosterOptions = {}): BoosterMiddleware {
   };
   const middleware = ((req, res, next): void => {
     const url = req.originalUrl || req.url || "/";
+    const path = url.split("?")[0];
     applyPendingInvalidations(engine);
     engine.counters.totalRequests++;
+    const selected = routeAllowed(path, options);
     const ctx: ResponseContext = {
-      engine, req, res, path: url.split("?")[0], generation: engine.generation,
-      key: JSON.stringify([req.headers.host || "", url]), eligible: requestAllowed(req) && !responseBlocksCache(res),
+      engine, req, res, path, generation: engine.generation,
+      key: JSON.stringify([req.headers.host || "", url]),
+      eligible: selected && requestAllowed(req) && !responseBlocksCache(res),
     };
     if (req.method !== "GET") guardExplicitHeaders(res);
     if (["POST", "PUT", "PATCH", "DELETE"].includes(req.method || "")) {
@@ -85,8 +92,11 @@ export function booster(options: BoosterOptions = {}): BoosterMiddleware {
       engine.bypass.record(REASONS.METHOD);
       next(); return;
     }
-    const reason = bypassReason(ctx);
-    if (reason) engine.bypass.record(reason);
+    if (!selected) engine.bypass.record(REASONS.POLICY);
+    else {
+      const reason = bypassReason(ctx);
+      if (reason) engine.bypass.record(reason);
+    }
     const cached = ctx.eligible ? engine.cache.get(ctx.key) : null;
     if (cached) {
       engine.counters.cacheHits++;
@@ -94,7 +104,7 @@ export function booster(options: BoosterOptions = {}): BoosterMiddleware {
       return;
     }
     engine.counters.cacheMisses++;
-    if (req.method === "GET") interceptResponse(ctx);
+    if (req.method === "GET" && selected) interceptResponse(ctx);
     next();
   }) as BoosterMiddleware;
   middleware.status = (): StatusSnapshot => buildStatus(engine);

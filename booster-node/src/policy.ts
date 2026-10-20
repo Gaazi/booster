@@ -64,6 +64,26 @@ export function responseTTL(res: ServerResponse, configured: number): number {
   return Number.isFinite(ttl) ? Math.max(0, ttl) : 0;
 }
 
+/** Select cacheable routes without embedding website-specific rules. */
+export interface RoutePolicy {
+  includePaths?: string[] | null;
+  excludePaths?: string[];
+}
+
+/** Match complete route names or explicitly slash-terminated subtrees. */
+function matches(path: string, prefix: string): boolean {
+  return prefix.endsWith("/") ? path.startsWith(prefix) : path === prefix;
+}
+
+/** Apply the route policy: exclusions win, and an empty include list selects nothing. */
+export function routeAllowed(path: string, policy: RoutePolicy): boolean {
+  const excluded = policy.excludePaths ?? [];
+  if (excluded.some(prefix => matches(path, prefix))) return false;
+  const included = policy.includePaths;
+  if (included === undefined || included === null) return true;
+  return included.some(prefix => matches(path, prefix));
+}
+
 /** Save original end-to-end headers without connection-specific transport fields. */
 export function snapshotHeaders(res: ServerResponse): CacheHeaders {
   const connection = String(res.getHeader("connection") || "").toLowerCase().split(",").map(x => x.trim());

@@ -313,11 +313,11 @@ Generated with `python refresh_docs.py`.
 ## booster-node/src/engine-types.ts
 
 - `BoosterOptions` (line 9): TypeScript declaration.
-- `BoosterMiddleware` (line 22): TypeScript declaration.
-- `status` (line 25): Return an operator snapshot without cache keys, payloads or request data.
-- `EngineCounters` (line 27): TypeScript declaration.
-- `EngineState` (line 32): TypeScript declaration.
-- `ResponseContext` (line 42): TypeScript declaration.
+- `BoosterMiddleware` (line 24): TypeScript declaration.
+- `status` (line 27): Return an operator snapshot without cache keys, payloads or request data.
+- `EngineCounters` (line 29): TypeScript declaration.
+- `EngineState` (line 34): TypeScript declaration.
+- `ResponseContext` (line 44): TypeScript declaration.
 
 ## booster-node/src/header-guard.ts
 
@@ -326,12 +326,12 @@ Generated with `python refresh_docs.py`.
 
 ## booster-node/src/index.ts
 
-- `isStaticAsset` (line 27): Classify assets for callers; extensions never override credential privacy.
-- `trackMutation` (line 34): Clear before/after mutations and invalidate older in-flight capture contexts.
-- `invalidate` (line 40): TypeScript declaration.
-- `applyPendingInvalidations` (line 46): Apply the invalidation notices published by the other workers.
-- `bypassReason` (line 54): Record why this request may not use the shared cache.
-- `booster` (line 63): Construct one bounded engine while preserving the existing middleware API.
+- `isStaticAsset` (line 31): Classify assets for callers; extensions never override credential privacy.
+- `trackMutation` (line 38): Clear before/after mutations and invalidate older in-flight capture contexts.
+- `invalidate` (line 44): TypeScript declaration.
+- `applyPendingInvalidations` (line 50): Apply the invalidation notices published by the other workers.
+- `bypassReason` (line 58): Record why this request may not use the shared cache.
+- `booster` (line 67): Construct one bounded engine while preserving the existing middleware API.
 
 ## booster-node/src/invalidation.ts
 
@@ -362,8 +362,11 @@ Generated with `python refresh_docs.py`.
 - `requestAllowed` (line 28): Check credentials and caller revalidation before any shared lookup.
 - `originAge` (line 38): Include already-aged origin responses when computing their remaining lifetime.
 - `responseTTL` (line 47): Bound RAM TTL by all origin freshness policies and prohibit private variants.
-- `snapshotHeaders` (line 68): Save original end-to-end headers without connection-specific transport fields.
-- `edgePolicy` (line 81): Protect private and uncacheable replies from edge storage.
+- `RoutePolicy` (line 68): Select cacheable routes without embedding website-specific rules.
+- `matches` (line 74): Match complete route names or explicitly slash-terminated subtrees.
+- `routeAllowed` (line 79): Apply the route policy: exclusions win, and an empty include list selects nothing.
+- `snapshotHeaders` (line 88): Save original end-to-end headers without connection-specific transport fields.
+- `edgePolicy` (line 101): Protect private and uncacheable replies from edge storage.
 
 ## booster-node/src/response.ts
 
@@ -377,6 +380,15 @@ Generated with `python refresh_docs.py`.
 - `edgePolicy` (line 71): TypeScript declaration.
 - `interceptResponse` (line 86): Preserve stream/callback behavior without retaining any streamed chunks.
 - `guardExplicitHeaders` (line 90): TypeScript declaration.
+
+## booster-node/src/site-config.ts
+
+- `SiteConfig` (line 12): One site's route policy and cache limits.
+- `paths` (line 24): Validate a list of absolute route prefixes.
+- `positive` (line 36): Validate a positive numeric setting.
+- `siteConfigFrom` (line 45): Build a configuration from a parsed JSON document and reject unknown settings.
+- `loadSiteConfig` (line 67): Read a configuration from one JSON file.
+- `optionsFrom` (line 76): Build the engine options for a declarative configuration.
 
 ## booster-node/src/status.ts
 
