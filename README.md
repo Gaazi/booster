@@ -157,6 +157,15 @@ attach_booster(app)      # Booster first: it stays the innermost layer
 setup_middlewares(app)   # security, CORS, session, compression after
 ```
 
+Prefer a configuration file? Add `--config` and the command also writes
+`booster.json`, which `booster.SiteConfig.from_file()` reads:
+
+```python
+from booster import SiteConfig, attach_from_config
+
+engine = attach_from_config(app, SiteConfig.from_file("booster.json"))
+```
+
 Then run the [conformance checklist](docs/CONFORMANCE_CHECKLIST.md) in your own
 test suite and measure before/after numbers before rollout. Full guide:
 [Plugin Recipe](docs/PLUGIN_RECIPE.md).

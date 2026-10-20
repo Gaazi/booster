@@ -10,6 +10,7 @@ from booster.minifier import FastMinifier
 from booster.telemetry import TelemetryTracker
 from booster.cache_policy import CachePolicy
 from booster.invalidation import FileInvalidationBus, LocalInvalidationBus
+from booster.site_config import SiteConfig, attach_from_config
 
 if TYPE_CHECKING:
     from booster.cdn import CDNConfig, CDNManager
@@ -57,4 +58,6 @@ __all__ = [
     "CachePolicy",
     "FileInvalidationBus",
     "LocalInvalidationBus",
+    "SiteConfig",
+    "attach_from_config",
 ]

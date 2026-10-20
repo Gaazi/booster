@@ -44,6 +44,33 @@ engine = booster.attach(
 `include_paths=None` allows every eligible route, `()` disables route caching
 entirely. Exclusions always win.
 
+**Or describe the site in one JSON file** instead of Python code. The command
+can write it next to the adapter:
+
+```bash
+booster init --path . --include /static/css/ --exclude /media/ --config
+```
+
+```json
+{
+  "include_paths": ["/static/css/"],
+  "exclude_paths": ["/media/"],
+  "cache_ttl": 300,
+  "max_cache_bytes": 8388608,
+  "enable_compression": false,
+  "enable_minification": false
+}
+```
+
+```python
+from booster import SiteConfig, attach_from_config
+
+engine = attach_from_config(app, SiteConfig.from_file("booster.json"))
+```
+
+An unknown key, a relative route prefix or a non-positive limit is rejected
+with a clear error instead of being ignored.
+
 ## 3. Attach before the other middleware
 
 ```python

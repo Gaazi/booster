@@ -7,17 +7,22 @@ from pathlib import Path
 
 def run_init(arguments: argparse.Namespace) -> int:
     """Generate a Booster adapter inside the host project."""
-    from booster.initializer import DEFAULT_EXCLUDE, DEFAULT_INCLUDE, write_adapter
+    from booster.initializer import (DEFAULT_EXCLUDE, DEFAULT_INCLUDE, write_adapter,
+                                     write_config)
 
     include = tuple(arguments.include or DEFAULT_INCLUDE)
     exclude = tuple(arguments.exclude or DEFAULT_EXCLUDE)
     directory = Path(arguments.path).resolve()
     try:
         target = write_adapter(directory, include, exclude, force=arguments.force)
+        written = [target]
+        if arguments.config:
+            written.append(write_config(directory, include, exclude, force=arguments.force))
     except (OSError, FileExistsError) as error:
         print(f"Booster init failed: {error}", file=sys.stderr)
         return 1
-    print(f"Created {target}")
+    for path in written:
+        print(f"Created {path}")
     print("Next: import attach_booster from it and call it before your other middleware.")
     print("See docs/PLUGIN_RECIPE.md and docs/CONFORMANCE_CHECKLIST.md in the Booster repository.")
     return 0
@@ -31,6 +36,7 @@ def main() -> None:
         parser.add_argument("--include", action="append", help="Public route prefix to cache")
         parser.add_argument("--exclude", action="append", help="Route prefix to keep out")
         parser.add_argument("--force", action="store_true", help="Replace an existing adapter")
+        parser.add_argument("--config", action="store_true", help="Also write booster.json")
         raise SystemExit(run_init(parser.parse_args(sys.argv[2:])))
     try:
         from booster.server import main as run_server

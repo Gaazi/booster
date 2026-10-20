@@ -19,7 +19,8 @@ separate runtime implementations; Python consumers do not install Node.
 Booster as middleware inside a host project: adapter file, registration order,
 route policy, one compression owner, worker limits and rollout verification.
 The installed command `booster init --path . --include /static/` writes the
-adapter file into the host project.
+adapter file into the host project, and `--config` adds a `booster.json` that
+`booster.SiteConfig.from_file()` reads.
 [CONFORMANCE_CHECKLIST.md](CONFORMANCE_CHECKLIST.md) is the copy-paste test file
 each host project runs to prove that private data never enters the shared cache.
 
