@@ -18,3 +18,13 @@
 - Engine files unchanged; no new public API, no new runtime dependency, no configuration format decision taken.
 - Pending: real consuming-project pilot (DMS) with its own approval; shared invalidation between workers; Node parity; physical-phone verification.
 - Commits: see `git log` on `dev`. Branch policy: `dev` only, no `main`/`demo` merge, no deployment.
+
+## 2026-10-20 — Plugin rollout phase 2b (real host pilot on DMS)
+
+- Agent/model: OpenCode (MiniMax M3.1 Flash Free)
+- Scope reviewed: focused (Phase 2 of `plans/PLUGIN_ROLLOUT_PLAN.md`), not a full-project review.
+- Done: applied the recipe to the DMS FastAPI project in its own repository - adapter file, static-only route policy, engine handle on `app.state`, six regression tests, pinned dependency in `pyproject.toml`/`uv.lock`/`requirements.txt`. DMS commits 029f0bd1 and 1981d22d, pushed to `dev` only.
+- Checks: DMS suite 319 passed; new plugin tests 6 passed; real application check reported 1 miss and 50 hits (98 percent hit ratio), warm p50 about 0.60 ms, browser-visible cache headers unchanged; live dev site health 200 before and after the deploys.
+- Findings worth keeping: the site sets its browser cache policy in an outer middleware, so the engine sees no public policy and stores nothing until the static mount repeats it; Starlette reports the mounted path in `scope["path"]` with `root_path` set separately; the deploy kit never runs `pip install`, so a pushed dependency does not reach the server by itself.
+- Pending: server-side install (operator action), live measurement, shared invalidation between workers, Node parity, physical-phone verification.
+- Commits: see `git log` on `dev`. Branch policy: `dev` only, no `main`/`demo` merge, no deployment.
