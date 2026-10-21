@@ -300,6 +300,14 @@ Generated with `python refresh_docs.py`.
 - `clear` (line 106): Clear all cache indexes and release the resident body budget.
 - `size` (line 109): Report the number of resident entries.
 
+## booster-node/src/cli.ts
+
+- `InitOptions` (line 4): TypeScript declaration.
+- `runInit` (line 13): Generate the adapter and, when asked, the matching site configuration.
+- `usage` (line 23): Print the command help.
+- `parseArgs` (line 36): Parse the command arguments without a dependency on a parser library.
+- `main` (line 52): Run the command and report the created files.
+
 ## booster-node/src/compressor.ts
 
 - `CompressionResult` (line 20): TypeScript declaration.
@@ -332,6 +340,18 @@ Generated with `python refresh_docs.py`.
 - `applyPendingInvalidations` (line 50): Apply the invalidation notices published by the other workers.
 - `bypassReason` (line 58): Record why this request may not use the shared cache.
 - `booster` (line 67): Construct one bounded engine while preserving the existing middleware API.
+
+## booster-node/src/initializer.ts
+
+- `buildMiddleware` (line 34): Build the middleware for this site from its configuration or its prefixes.
+- `renderPaths` (line 41): Render a path array for the generated module.
+- `renderAdapter` (line 46): Render the adapter source for the requested route policy.
+- `writeAdapter` (line 54): Write the adapter into a host project without overwriting existing work.
+- `mkdirSync` (line 60): TypeScript declaration.
+- `writeFileSync` (line 61): TypeScript declaration.
+- `writeConfig` (line 66): Write the matching JSON site configuration into a host project.
+- `mkdirSync` (line 72): TypeScript declaration.
+- `writeFileSync` (line 80): TypeScript declaration.
 
 ## booster-node/src/invalidation.ts
 

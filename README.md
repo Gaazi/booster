@@ -174,12 +174,17 @@ Node projects install the same engine from GitHub:
 
 ```bash
 npm install github:Gaazi/booster-node#<REVIEWED_COMMIT>
+npx booster-node init --path . --include /static/css/ --exclude /media/ --config
 ```
 
 ```javascript
-import { booster } from "booster-node";
-app.use(booster({ includePaths: ["/static/"], excludePaths: ["/api/"] }));
+import { buildMiddleware } from "./booster_plugin.ts";
+app.use(buildMiddleware());
 ```
+
+The Node engine matches the Python one: the same route policy, the same JSON
+site configuration, the same operator snapshot (`middleware.status()`), the
+same bypass reasons and the same shared invalidation bus.
 
 ---
 

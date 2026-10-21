@@ -49,6 +49,16 @@
 - Pending: server-side install (operator action), physical-phone and network measurement, no `main` merge and no deployment.
 - Commits: see `git log` on `dev`. Branch policy: `dev` only, no `main`/`demo` merge, no deployment.
 
+## 2026-10-21 — Node scaffolding command
+
+- Agent/model: OpenCode (MiniMax M3.1 Flash Free)
+- Scope reviewed: focused (Node consumption path parity), not a full-project review.
+- Done: added `booster-node/src/initializer.ts` and `booster-node/src/cli.ts` with a `bin` entry, so `npx booster-node init` writes `booster_plugin.ts` and the matching `booster.json` into a host project; README for both engines now shows the command flow.
+- Checks: Node suite 47 passed; TypeScript build and strict type check pass; the compiled `dist/cli.js` was run and created both files; Python suite 216 passed; `CODEMAP.md` regenerated.
+- Findings worth keeping: the package builds to CommonJS, so `import.meta` is not allowed in the CLI source; the entry check now matches the script name instead, which works for both the TypeScript source and the compiled file.
+- Pending: server-side install (operator action), physical-phone and network measurement, no `main` merge and no deployment.
+- Commits: see `git log` on `dev`. Branch policy: `dev` only, no `main`/`demo` merge, no deployment.
+
 ## 2026-10-20 — Consumption path: `booster init` scaffolding command
 
 - Agent/model: OpenCode (MiniMax M3.1 Flash Free)

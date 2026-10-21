@@ -7,6 +7,7 @@ import type { BoosterOptions } from "../src/index.ts";
 import { request as rawRequest, fixture } from "./cache-regressions.ts";
 import "./parity.ts";
 import "./site-config.ts";
+import "./init.ts";
 
 test("FastMemoryCache - set, get, etag, and expiry", async () => {
   const cache = new FastMemoryCache(10, 0.05); // 50ms TTL

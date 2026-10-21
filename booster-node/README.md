@@ -21,6 +21,24 @@ tested and not published, so do not edit them.
 - Avoid retaining streamed chunks. Clear before/after writes and reject captures
   from earlier mutation generations. Multiple workers still require coordination.
 
+## Scaffold an adapter in your project
+
+```bash
+npx booster-node init --path . --include /static/css/ --exclude /media/ --config
+```
+
+The command writes `booster_plugin.ts` and, with `--config`, the matching
+`booster.json` into your project. It never overwrites existing files unless
+you pass `--force`.
+
+```typescript
+import express from "express";
+import {buildMiddleware} from "./booster_plugin";
+
+const app = express();
+app.use(buildMiddleware());
+```
+
 ## Route policy and declarative configuration
 
 ```typescript
