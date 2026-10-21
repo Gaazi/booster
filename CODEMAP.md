@@ -326,11 +326,13 @@ Generated with `python refresh_docs.py`.
 
 ## booster-node/src/cli.ts
 
-- `InitOptions` (line 5): TypeScript declaration.
-- `runInit` (line 14): Generate the adapter and, when asked, the matching site configuration.
-- `usage` (line 24): Print the command help.
+- `InitOptions` (line 7): TypeScript declaration.
+- `runInit` (line 16): Generate the adapter and, when asked, the matching site configuration.
+- `usage` (line 26): Print the command help.
 - `parseArgs` (line 37): Parse the command arguments without a dependency on a parser library.
-- `main` (line 53): Run the command and report the created files.
+- `runMeasure` (line 53): Measure one URL and report whether the engine could store the response.
+- `runDoctor` (line 85): Report the runtime and the engine version.
+- `main` (line 95): Run the command and report the created files.
 
 ## booster-node/src/compressor.ts
 
@@ -410,8 +412,10 @@ Generated with `python refresh_docs.py`.
 - `RoutePolicy` (line 76): Select cacheable routes without embedding website-specific rules.
 - `matches` (line 82): Match complete route names or explicitly slash-terminated subtrees.
 - `routeAllowed` (line 87): Apply the route policy: exclusions win, and an empty include list selects nothing.
-- `snapshotHeaders` (line 96): Save original end-to-end headers without connection-specific transport fields.
-- `edgePolicy` (line 109): Protect private and uncacheable replies from edge storage.
+- `CacheVerdict` (line 96): Explain whether the engine could store a response and for how long.
+- `cacheVerdict` (line 103): Judge a plain header record with the engine's own cacheability rules.
+- `snapshotHeaders` (line 130): Save original end-to-end headers without connection-specific transport fields.
+- `edgePolicy` (line 143): Protect private and uncacheable replies from edge storage.
 
 ## booster-node/src/response.ts
 

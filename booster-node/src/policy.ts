@@ -92,6 +92,40 @@ export function routeAllowed(path: string, policy: RoutePolicy): boolean {
   return included.some(prefix => matches(path, prefix));
 }
 
+/** Explain whether the engine could store a response and for how long. */
+export interface CacheVerdict {
+  cacheable: boolean;
+  reason: string;
+  ttlSeconds: number;
+}
+
+/** Judge a plain header record with the engine's own cacheability rules. */
+export function cacheVerdict(headers: Record<string, string | undefined>, status: number,
+                             configuredTtl = 300, allowedVary: string[] = []): CacheVerdict {
+  if (status !== 200) return { cacheable: false, reason: "status_not_cacheable", ttlSeconds: 0 };
+  const controls = ["cache-control", "cdn-cache-control", "surrogate-control"]
+    .map(name => directives(String(headers[name] ?? "")));
+  if (controls.some(control => FORBIDDEN.some(name => control.has(name)))) {
+    return { cacheable: false, reason: "response_not_public", ttlSeconds: 0 };
+  }
+  if (!controls[0].has("public")) return { cacheable: false, reason: "response_not_public", ttlSeconds: 0 };
+  const vary = String(headers["vary"] ?? "").split(",").map(value => value.trim().toLowerCase()).filter(Boolean);
+  const accepted = new Set(["accept-encoding", ...allowedVary.map(field => field.toLowerCase())]);
+  if (!vary.every(field => accepted.has(field))) {
+    return { cacheable: false, reason: "response_not_public", ttlSeconds: 0 };
+  }
+  const age = Number(headers["age"] ?? "0");
+  let ttl = configuredTtl;
+  for (const control of controls) {
+    const key = control.has("s-maxage") ? "s-maxage" : "max-age";
+    if (!control.has(key)) continue;
+    const match = /^(?:"(\d+)"|(\d+))$/.exec(control.get(key)!);
+    if (!match) return { cacheable: false, reason: "response_not_public", ttlSeconds: 0 };
+    ttl = Math.min(ttl, Number(match[1] ?? match[2]) - (Number.isFinite(age) ? age : 0));
+  }
+  return { cacheable: ttl > 0, reason: ttl > 0 ? "stored" : "response_not_public", ttlSeconds: Math.max(0, ttl) };
+}
+
 /** Save original end-to-end headers without connection-specific transport fields. */
 export function snapshotHeaders(res: ServerResponse): CacheHeaders {
   const connection = String(res.getHeader("connection") || "").toLowerCase().split(",").map(x => x.trim());

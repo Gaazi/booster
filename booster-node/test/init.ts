@@ -47,7 +47,8 @@ test("command arguments are parsed", () => {
   assert.deepEqual(options.exclude, ["/c/"]);
   assert.equal(options.config, true);
   assert.equal(options.force, true);
-  assert.ok(usage().includes("booster-node init"));
+  assert.ok(usage().includes("init"));
+  assert.ok(usage().includes("measure"));
 });
 
 test("command creates the adapter and the configuration", () => {

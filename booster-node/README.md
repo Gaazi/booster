@@ -39,6 +39,17 @@ const app = express();
 app.use(buildMiddleware());
 ```
 
+## Measure and check the installation
+
+```bash
+npx booster-node measure https://your-site.example/static/app.css --requests 20
+npx booster-node doctor
+```
+
+`measure` reports the status, the size, the cache headers, the p50/p95 timings
+and whether the engine could store the response, using the engine's own rules.
+`doctor` reports the runtime, the engine version and the running command.
+
 ## Route policy and declarative configuration
 
 ```typescript
