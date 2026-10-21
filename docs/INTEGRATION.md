@@ -45,6 +45,12 @@ starts no dashboard, proxy, port scan, update worker or separate process.
 Standalone update checks do not auto-install by default; keep
 `BOOSTER_AUTO_UPDATE=false` for reviewed deployments.
 
+**Bump the version with every engine change.** A pinned commit still keeps the
+same package version until the project version changes, and `pip` treats an
+already installed distribution with that name and version as satisfied. Without
+a version bump the server keeps the older engine code and a new option appears
+to be missing.
+
 The default installation contains the core cache/compression engine without
 server dependencies. The host provides its own ASGI/Django framework. Optional
 extras are `server` (standalone dashboard/proxy and HTTP client), `cdn` (HTTP

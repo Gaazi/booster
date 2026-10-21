@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "booster"
-version = "1.0.1.dev1"
+version = "1.0.2.dev1"
 description = "Universal Ultra-Fast Rocket Speed Caching, Compression, and Minification Engine for Python and Web Apps."
 readme = "README.md"
 requires-python = ">=3.10"

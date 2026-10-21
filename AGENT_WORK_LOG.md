@@ -94,6 +94,7 @@
 - Done: added `booster/measurement.py` and the `booster measure` command, which reports status, size, cache headers, p50/p95 timings and the engine's own cacheability verdict for a live URL. Added the opt-in `allowed_vary` option to the Python engine, the Django middleware, the standalone proxy and the Node engine, with the default left closed.
 - Checks: Python suite 226 passed (3 new tests); Node suite 48 passed (1 new test); TypeScript build and strict type check pass; the command was run against the live DMS dev site and reported `public, max-age=31536000, immutable` with a `response_not_public` verdict.
 - Finding worth keeping: the LiteSpeed layer adds `Vary: User-Agent` to static files, so the engine refused to store them and the live site cached nothing; the bytes and validator were proven identical for four different user agents, which is the evidence a host needs before allowing that field.
+- Second finding worth keeping: after the deploy, `pip` did not install the new commit because the package version was unchanged - it treated the installed distribution as already satisfied and the site kept the older engine code. The fix is a version bump with every engine change, now recorded in `docs/INTEGRATION.md`.
 - Pending: enable the allow list in the DMS adapter and verify the live dev site caches, server-side install (operator action), physical-phone and network measurement, no `main` merge and no deployment.
 - Commits: see `git log` on `dev`. Branch policy: `dev` only, no `main`/`demo` merge, no deployment.
 

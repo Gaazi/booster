@@ -29,7 +29,7 @@ def test_classify_update() -> None:
 async def test_default_update_check_does_not_install(monkeypatch) -> None:
     """A release check never changes the environment without explicit opt-in."""
     monkeypatch.delenv("BOOSTER_AUTO_UPDATE", raising=False)
-    release = {"tag_name": "v1.0.2"}
+    release = {"tag_name": "v1.0.3"}
     with patch("booster.updater.fetch_latest_release", new_callable=AsyncMock, return_value=release):
         with patch("booster.updater.apply_patch_update") as install:
             result = await check_for_updates(force=True)
@@ -41,9 +41,9 @@ async def test_default_update_check_does_not_install(monkeypatch) -> None:
 async def test_check_for_updates_patch(monkeypatch) -> None:
     """Verify patch update detection and auto-apply formatting."""
     mock_release = {
-        "tag_name": "v1.0.2",
-        "name": "v1.0.1 Bugfix",
-        "html_url": "https://github.com/Gaazi/booster/releases/tag/v1.0.1",
+        "tag_name": "v1.0.3",
+        "name": "v1.0.2 Bugfix",
+        "html_url": "https://github.com/Gaazi/booster/releases/tag/v1.0.2",
     }
     monkeypatch.setenv("BOOSTER_AUTO_UPDATE", "true")
     with patch("booster.updater.fetch_latest_release", new_callable=AsyncMock) as mock_fetch:
