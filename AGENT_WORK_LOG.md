@@ -78,6 +78,15 @@
 - Pending: server-side install (operator action), physical-phone and network measurement, no `main` merge and no deployment.
 - Commits: see `git log` on `dev`. Branch policy: `dev` only, no `main`/`demo` merge, no deployment.
 
+## 2026-10-21 — Published artifact proof in CI
+
+- Agent/model: OpenCode (MiniMax M3.1 Flash Free)
+- Scope reviewed: focused (build verification), not a full-project review.
+- Done: the verified-build job now runs the installed command from the built wheel and from the installed Node tarball and checks that the scaffolded adapter and configuration files appear in a scratch host project.
+- Checks: both flows executed locally before the change - the wheel was installed into a fresh virtualenv and `booster init` produced `booster_plugin.py` and `booster.json`; the tarball was installed with npm and `dist/cli.js init` produced `booster_plugin.ts` and `booster.json`; the workflow YAML parses.
+- Pending: server-side install (operator action), physical-phone and network measurement, no `main` merge and no deployment.
+- Commits: see `git log` on `dev`. Branch policy: `dev` only, no `main`/`demo` merge, no deployment.
+
 ## 2026-10-20 — Consumption path: `booster init` scaffolding command
 
 - Agent/model: OpenCode (MiniMax M3.1 Flash Free)

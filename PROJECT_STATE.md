@@ -10,6 +10,7 @@ Updated: 2026-10-20 15:40
 - Python suite 216 passed, 1 existing Starlette deprecation warning. `CODEMAP.md` regenerated with `refresh_docs.py`.
 - Documentation of record updated: `docs/FEATURES_AND_ARCHITECTURE.md` gained the shared invalidation, site configuration and bypass reason sections plus the corrected install and verification steps; `docs/USE_CASES.md` describes the shared bus; `docs/NEXT_STEPS.md` now hands off the real remaining work. All relative documentation links resolve.
 - Proof path for every supported stack: the conformance checklist now carries a Django (WSGI) variant and a Node.js variant next to the ASGI one, and `examples/django_host.py` shows the Django wiring with a regression test (218 Python tests).
+- Published artifact proof: the CI smoke steps now run the installed command from the built wheel and the installed tarball and check that both files appear in a scratch host project. Both flows were executed locally before the change (Python 218 tests, Node 47 tests).
 ## Pending
 - The engine is not installed on any server. The DMS deploy kit runs git, rsync, migrate, restart and a health check but never `pip install`, so installing the pinned package needs one explicit operator action inside the cPanel virtualenv.
 - The shared invalidation bus is proven with two local processes and two Node engines on one host; it is not proven with a real load balancer, a network file system or a container restart.
