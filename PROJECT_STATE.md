@@ -8,6 +8,7 @@ Updated: 2026-10-20 15:40
 - Operator visibility (cb35078): `booster/bypass.py` counts fixed reason names for every response that was not stored; `metrics["bypass_reasons"]` explains a route without recording any cookie, token, path or payload.
 - Node parity: the Node engine gained the same features - `bypass.ts` reason counters, `status.ts` operator snapshot with `middleware.status()`, `invalidation.ts` file bus, `site-config.ts` JSON configuration and the route policy that was missing entirely. Node suite 47 passed (was 31), TypeScript build and strict type check pass.
 - Python suite 216 passed, 1 existing Starlette deprecation warning. `CODEMAP.md` regenerated with `refresh_docs.py`.
+- Documentation of record updated: `docs/FEATURES_AND_ARCHITECTURE.md` gained the shared invalidation, site configuration and bypass reason sections plus the corrected install and verification steps; `docs/USE_CASES.md` describes the shared bus; `docs/NEXT_STEPS.md` now hands off the real remaining work. All relative documentation links resolve.
 ## Pending
 - The engine is not installed on any server. The DMS deploy kit runs git, rsync, migrate, restart and a health check but never `pip install`, so installing the pinned package needs one explicit operator action inside the cPanel virtualenv.
 - The shared invalidation bus is proven with two local processes and two Node engines on one host; it is not proven with a real load balancer, a network file system or a container restart.

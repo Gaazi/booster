@@ -46,9 +46,10 @@ and [price vs. personalized data](https://shopify.dev/docs/storefronts/headless/
 - Cache versioned CSS/JS in the browser as well as at the origin. A browser/CDN
   hit can avoid reaching Booster altogether. Update asset URLs when their bytes
   change; see [versioned HTTP caching](https://web.dev/articles/codelab-http-cache).
-- Multi-worker RAM caches are independent. Plan invalidation across processes
-  before relying on fresh public HTML/API values. Count the RAM budget per worker,
-  plus Python/Node runtime and cache metadata overhead.
+- Multi-worker RAM caches are independent. Pass one shared invalidation bus
+  (`FileInvalidationBus`) when the workers share a host and must see each
+  other's writes; otherwise exclude mutable routes from the cache. Count the RAM
+  budget per worker, plus Python/Node runtime and cache metadata overhead.
 - First requests and restarts have cold caches. On already fast/static workloads,
   middleware/compression overhead may outweigh avoided reads; compare both modes.
 - Media seeking and resumable downloads depend on partial responses. Booster's

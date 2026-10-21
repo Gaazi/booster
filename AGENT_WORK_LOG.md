@@ -59,6 +59,15 @@
 - Pending: server-side install (operator action), physical-phone and network measurement, no `main` merge and no deployment.
 - Commits: see `git log` on `dev`. Branch policy: `dev` only, no `main`/`demo` merge, no deployment.
 
+## 2026-10-21 — Documentation of record updated
+
+- Agent/model: OpenCode (MiniMax M3.1 Flash Free)
+- Scope reviewed: focused (documentation only), not a full-project review.
+- Done: added the shared invalidation, declarative site configuration and bypass reason sections to `docs/FEATURES_AND_ARCHITECTURE.md`, corrected its install and verification steps, updated the module map and doc index, refreshed the multi-worker guidance in `docs/USE_CASES.md`, and rewrote `docs/NEXT_STEPS.md` so the handoff matches the current state.
+- Checks: Python suite 216 passed; Node suite 47 passed; all relative documentation links resolve.
+- Pending: server-side install (operator action), physical-phone and network measurement, no `main` merge and no deployment.
+- Commits: see `git log` on `dev`. Branch policy: `dev` only, no `main`/`demo` merge, no deployment.
+
 ## 2026-10-20 — Consumption path: `booster init` scaffolding command
 
 - Agent/model: OpenCode (MiniMax M3.1 Flash Free)
