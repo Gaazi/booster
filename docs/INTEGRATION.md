@@ -49,7 +49,8 @@ Standalone update checks do not auto-install by default; keep
 same package version until the project version changes, and `pip` treats an
 already installed distribution with that name and version as satisfied. Without
 a version bump the server keeps the older engine code and a new option appears
-to be missing.
+to be missing. `booster doctor` reports the installed version and the commit
+the server really has, which is how a host confirms this.
 
 The default installation contains the core cache/compression engine without
 server dependencies. The host provides its own ASGI/Django framework. Optional

@@ -199,6 +199,19 @@ whether the engine could store that response, using the engine's own privacy
 rules. If the verdict is `response_not_public`, the `Vary` header explains
 why.
 
+### 6. Check the Installation
+
+```bash
+booster doctor
+```
+
+It reports the installed version, where the engine was imported from, the
+pinned commit the server really has, the console script path and the optional
+extras that are missing. A pinned commit is easy to believe and hard to prove:
+`pip` keeps an installed distribution whose name and version match, so this
+command is how a host confirms that the engine code on the server is the code
+it pinned.
+
 ---
 
 ## 🌐 Live Hosting Deployment (Cloud, VPS & cPanel)

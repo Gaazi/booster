@@ -92,7 +92,8 @@ Generated with `python refresh_docs.py`.
 
 - `run_init` (line 8): Generate a Booster adapter inside the host project.
 - `run_measure` (line 31): Measure one URL and report whether the engine could store it.
-- `main` (line 45): Delegate to the server without loading its dependencies on core import.
+- `run_doctor` (line 45): Report the installed engine, its extras and the pinned source.
+- `main` (line 56): Delegate to the server without loading its dependencies on core import.
 
 ## booster/compressor.py
 
@@ -110,6 +111,15 @@ Generated with `python refresh_docs.py`.
 - `__call__` (line 24): Bypass personalized requests and invalidate derived reads around writes.
 - `_cached_response` (line 47): Restore headers with a length matching the cached representation.
 - `_store_response` (line 58): Cache only a public response and correct validators after minification.
+
+## booster/doctor.py
+
+- `_distribution_metadata` (line 25): Locate the installed distribution metadata of the engine.
+- `pinned_source` (line 37): Read the direct URL the installed distribution came from.
+- `optional_extras` (line 55): Report which optional modules are importable.
+- `report` (line 64): Collect the installation report.
+- `_command_path` (line 78): Return the resolved path of an installed console script.
+- `format_report` (line 85): Render the installation report as a short text block.
 
 ## booster/http_policy.py
 
@@ -454,6 +464,7 @@ graph TD
   booster --> invalidation
   booster --> minifier
   booster --> telemetry
+  cli --> doctor
   cli --> initializer
   cli --> measurement
   cli --> server

@@ -167,6 +167,9 @@ jobs:
           test -f "$RUNNER_TEMP/booster-smoke/host/booster_plugin.py"
           test -f "$RUNNER_TEMP/booster-smoke/host/booster.json"
           grep -q '/static/css/' "$RUNNER_TEMP/booster-smoke/host/booster_plugin.py"
+      - name: Verify the installed command reports the installation
+        run: |
+          "$RUNNER_TEMP/booster-smoke/bin/booster" doctor | grep -q 'pinned commit'
       - name: Check optional standalone installation from the same wheel
         run: |
           wheels=(dist/verified/*.whl)

@@ -42,8 +42,23 @@ def run_measure(arguments: argparse.Namespace) -> int:
     return 0
 
 
+def run_doctor(arguments: argparse.Namespace) -> int:
+    """Report the installed engine, its extras and the pinned source."""
+    import json
+
+    from booster.doctor import format_report, report
+
+    result = report()
+    print(json.dumps(result, indent=2) if arguments.json else format_report(result))
+    return 0
+
+
 def main() -> None:
     """Delegate to the server without loading its dependencies on core import."""
+    if len(sys.argv) > 1 and sys.argv[1] == "doctor":
+        parser = argparse.ArgumentParser(prog="booster doctor", description="Report the installation")
+        parser.add_argument("--json", action="store_true", help="Print the report as JSON")
+        raise SystemExit(run_doctor(parser.parse_args(sys.argv[2:])))
     if len(sys.argv) > 1 and sys.argv[1] == "measure":
         parser = argparse.ArgumentParser(prog="booster measure", description="Measure one URL")
         parser.add_argument("url", help="URL to measure")
