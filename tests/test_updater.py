@@ -4,8 +4,15 @@ import pytest
 from unittest.mock import AsyncMock, patch
 from starlette.testclient import TestClient
 
+from booster import __version__
 from booster.updater import parse_version, classify_update, check_for_updates
 from booster.server import app
+
+
+def next_patch_release() -> str:
+    """Return a release tag that is newer than the current engine version."""
+    major, minor, patch = parse_version(__version__)
+    return f"v{major}.{minor}.{patch + 1}"
 
 
 def test_parse_version() -> None:
@@ -29,7 +36,7 @@ def test_classify_update() -> None:
 async def test_default_update_check_does_not_install(monkeypatch) -> None:
     """A release check never changes the environment without explicit opt-in."""
     monkeypatch.delenv("BOOSTER_AUTO_UPDATE", raising=False)
-    release = {"tag_name": "v1.0.3"}
+    release = {"tag_name": next_patch_release()}
     with patch("booster.updater.fetch_latest_release", new_callable=AsyncMock, return_value=release):
         with patch("booster.updater.apply_patch_update") as install:
             result = await check_for_updates(force=True)
@@ -41,9 +48,9 @@ async def test_default_update_check_does_not_install(monkeypatch) -> None:
 async def test_check_for_updates_patch(monkeypatch) -> None:
     """Verify patch update detection and auto-apply formatting."""
     mock_release = {
-        "tag_name": "v1.0.3",
-        "name": "v1.0.2 Bugfix",
-        "html_url": "https://github.com/Gaazi/booster/releases/tag/v1.0.2",
+        "tag_name": next_patch_release(),
+        "name": "next patch release",
+        "html_url": "https://github.com/Gaazi/booster/releases/tag/next-patch",
     }
     monkeypatch.setenv("BOOSTER_AUTO_UPDATE", "true")
     with patch("booster.updater.fetch_latest_release", new_callable=AsyncMock) as mock_fetch:
