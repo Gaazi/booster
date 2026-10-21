@@ -95,6 +95,7 @@
 - Checks: Python suite 226 passed (3 new tests); Node suite 48 passed (1 new test); TypeScript build and strict type check pass; the command was run against the live DMS dev site and reported `public, max-age=31536000, immutable` with a `response_not_public` verdict.
 - Finding worth keeping: the LiteSpeed layer adds `Vary: User-Agent` to static files, so the engine refused to store them and the live site cached nothing; the bytes and validator were proven identical for four different user agents, which is the evidence a host needs before allowing that field.
 - Second finding worth keeping: after the deploy, `pip` did not install the new commit because the package version was unchanged - it treated the installed distribution as already satisfied and the site kept the older engine code. The fix is a version bump with every engine change, now recorded in `docs/INTEGRATION.md`.
+- Third finding worth keeping: the upstream LiteSpeed layer sends `Age: 81`, so the engine refused to store the asset even after the Vary fix. The engine now stores an aged response while its remaining freshness is positive and reports the origin age plus the time in the cache, which matches the RFC 9111 age model the Node engine already used.
 - Pending: enable the allow list in the DMS adapter and verify the live dev site caches, server-side install (operator action), physical-phone and network measurement, no `main` merge and no deployment.
 - Commits: see `git log` on `dev`. Branch policy: `dev` only, no `main`/`demo` merge, no deployment.
 

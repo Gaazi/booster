@@ -163,7 +163,7 @@ class RocketBooster:
             if self.enable_compression:
                 body, encoding = self.compressor.compress(body, cached.content_type,
                                                           headers.get("accept-encoding", ""))
-            stored_headers = cached.headers + [(b"age", str(int(time.monotonic() - cached.created_at)).encode("ascii"))]
+            stored_headers = cached.headers + [(b"age", self._age_value(cached))]
             await self._send_cached(send, cached.status_code, cached.content_type, body,
                                     cached.etag, encoding, stored_headers)
             size, status = len(body), cached.status_code
@@ -177,9 +177,21 @@ class RocketBooster:
         headers = representation_headers(cached.headers, b"", cached.etag, None)
         headers = [(key, value) for key, value in headers if key.lower() not in
                    {b"content-length", b"content-type"}]
-        headers.append((b"age", str(int(time.monotonic() - cached.created_at)).encode("ascii")))
+        headers.append((b"age", self._age_value(cached)))
         await send({"type": "http.response.start", "status": 304, "headers": headers})
         await send({"type": "http.response.body", "body": b""})
+
+    @staticmethod
+    def _age_value(cached: Any) -> bytes:
+        """Report the origin age plus the time the entry spent in this cache."""
+        origin = 0.0
+        for name, value in cached.headers:
+            if name.lower() == b"age":
+                try:
+                    origin = max(0.0, float(value.decode("latin1").strip()))
+                except ValueError:
+                    origin = 0.0
+        return str(int(origin + time.monotonic() - cached.created_at)).encode("ascii")
 
     async def _send_cached(self, send: Callable, status: int, content_type: str, body: bytes,
                            etag: str, encoding: str | None,

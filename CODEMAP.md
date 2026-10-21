@@ -35,9 +35,10 @@ Generated with `python refresh_docs.py`.
 - `clear_cache` (line 146): Clear the local cache and tell the other workers to clear theirs.
 - `_handle_get` (line 151): Serve a public cached representation or its conditional response.
 - `_send_304` (line 175): Retain origin cache and security headers on conditional cache hits.
-- `_send_cached` (line 184): Send cached content with validators matching the transformed bytes.
-- `_passthrough_and_cache` (line 192): Optimize a bounded response while respecting ASGI streaming semantics.
-- `get_status` (line 197): Return a host-dashboard snapshot without credentials, URLs or payloads.
+- `_age_value` (line 185): Report the origin age plus the time the entry spent in this cache.
+- `_send_cached` (line 196): Send cached content with validators matching the transformed bytes.
+- `_passthrough_and_cache` (line 204): Optimize a bounded response while respecting ASGI streaming semantics.
+- `get_status` (line 209): Return a host-dashboard snapshot without credentials, URLs or payloads.
 
 ## booster/bypass.py
 
@@ -115,10 +116,11 @@ Generated with `python refresh_docs.py`.
 - `is_static_asset` (line 13): Check if the path represents an immutable or public static asset.
 - `cache_directives` (line 19): Parse case-insensitive cache directive names without substring matches.
 - `request_cacheable` (line 25): Exclude personalized, conditional and explicitly uncached requests.
-- `response_cacheable` (line 37): Store only responses safe for a shared representation cache.
-- `response_ttl` (line 59): Bound static cache retention by the shortest declared freshness limit.
-- `filtered_headers` (line 71): Remove hop-by-hop fields including fields nominated by Connection.
-- `merge_vary` (line 79): Preserve existing negotiation fields while adding compression.
+- `response_age` (line 37): Read the Age header as the number of seconds the response is already old.
+- `response_cacheable` (line 45): Store only responses safe for a shared representation cache.
+- `response_ttl` (line 67): Bound static cache retention by the shortest declared freshness limit.
+- `filtered_headers` (line 80): Remove hop-by-hop fields including fields nominated by Connection.
+- `merge_vary` (line 88): Preserve existing negotiation fields while adding compression.
 
 ## booster/initializer.py
 

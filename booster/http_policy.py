@@ -34,6 +34,14 @@ def request_cacheable(headers: dict[str, str], is_static: bool = False) -> bool:
             and "no-cache" not in headers.get("pragma", "").lower())
 
 
+def response_age(headers: dict[str, str]) -> float:
+    """Read the Age header as the number of seconds the response is already old."""
+    try:
+        return max(0.0, float(headers.get("age", "0").strip()))
+    except ValueError:
+        return 0.0
+
+
 def response_cacheable(headers: dict[str, str], is_static: bool = False,
                        allowed_vary: tuple[str, ...] = ()) -> bool:
     """Store only responses safe for a shared representation cache."""
@@ -42,7 +50,7 @@ def response_cacheable(headers: dict[str, str], is_static: bool = False,
     accepted = {"accept-encoding"} | {field.lower() for field in allowed_vary}
     if is_static:
         if any(key in headers for key in ("set-cookie", "content-range", "www-authenticate",
-                                         "content-encoding", "age", "expires")):
+                                         "content-encoding", "expires")):
             return False
         if control.intersection({"private", "no-store", "no-cache", "no-transform", "must-revalidate"}):
             return False
@@ -59,12 +67,13 @@ def response_cacheable(headers: dict[str, str], is_static: bool = False,
 def response_ttl(headers: dict[str, str], default: float) -> float:
     """Bound static cache retention by the shortest declared freshness limit."""
     limits = [default]
+    age = response_age(headers)
     for part in headers.get("cache-control", "").split(","):
         name, separator, value = part.strip().partition("=")
         if name.lower() in {"max-age", "s-maxage"}:
             if not separator or not value.strip('"').isdigit():
                 return 0
-            limits.append(float(value.strip('"')))
+            limits.append(float(value.strip('"')) - age)
     return min(limits)
 
 

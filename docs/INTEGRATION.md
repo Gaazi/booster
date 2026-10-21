@@ -127,6 +127,9 @@ the serving process; it is not a fleet-wide cache purge or aggregate report.
 
 - Origin static max-age/s-maxage bounds the configured RAM TTL. Cache hits report
   Age; conditional hits retain origin cache/security headers.
+- A response that already carries an `Age` header from an upstream cache is
+  stored only while its remaining freshness is positive, and the reported `Age`
+  adds the origin age to the time the entry spent in this cache.
 - The cache is per process, bounded by items and a configurable byte budget
   (`max_cache_bytes`, default 64 MiB). Restarting
   clears it. Multiple workers do not share invalidation.
