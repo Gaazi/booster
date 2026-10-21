@@ -136,6 +136,26 @@ def test_security_headers_survive_a_cache_hit() -> None:
 If a check fails, fix the route policy in the adapter file rather than
 relaxing the test.
 
+## Checks for a site behind a caching layer
+
+| Check | Expected |
+| :--- | :--- |
+| `booster measure <url>` verdict | `stored`, or a named reason with a hint |
+| `Vary` of a static asset | only `Accept-Encoding`, or a field the host proved harmless |
+| `Age` of a stored response | the origin age plus the time in the cache |
+| A request that carries a session cookie | bypasses the cache by design |
+| `engine.get_status()` bypass reasons | the expected reason for every route |
+
+A site that sets a session cookie on every response sends cookies with almost
+every request, and a cookie-bearing request always bypasses the shared cache.
+That is the privacy rule working, not a defect: either the cached routes are
+served before the cookie exists, or the site gains little from the shared
+cache and should rely on its edge cache instead.
+
+An upstream proxy can also replace the `Age` and `Vary` headers the engine
+sends. Judge the engine with `engine.get_status()` and its bypass reasons, not
+with the headers of a response the edge already cached.
+
 ## Django (WSGI) variant
 
 Django has no route policy, so a Django site opts in per response: only views

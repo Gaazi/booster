@@ -187,11 +187,27 @@ only a site that proves the bytes are identical for every user agent may pass
 Local RAM timings do not prove mobile network or production loading speed.
 Report measured results only.
 
+## 9. Read the engine, not only the response
+
 A working reference implementation lives in this repository:
 `examples/host_app.py` (adapter, route policy and registration order),
 `examples/measure_host.py` (before/after measurement) and
 `tests/test_host_conformance.py` (the checklist executed on every CI run).
 
+`engine.get_status()` is the source of truth. It reports the configuration, the
+resident cache memory, the hit counters and the reason every response was or
+was not stored. Use it to answer "is this route cached?" instead of reading
+response headers, because an upstream proxy can replace the `Age` and `Vary`
+headers the engine sends.
+
+A request that carries a cookie or an authorization header always bypasses the
+shared cache. If the application sets a session cookie on every response, most
+requests carry one, and the shared cache will rarely serve anything. In that
+case the host usually gains more from its edge cache than from this engine, and
+the honest choice is to keep the route policy narrow and let the edge do the
+work.
+
+---
 ## Django
 
 ```python

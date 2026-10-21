@@ -66,6 +66,10 @@ The rules match the Python engine: an exclusion always wins, a prefix ending in
 `/` selects a subtree, any other prefix selects that exact path, an omitted
 `includePaths` allows every eligible route and an empty list selects nothing.
 
+A hosting layer that adds `Vary: User-Agent` to immutable assets needs an
+explicit decision. Only a site that proves the bytes are identical for every
+user agent may pass `allowedVary: ["user-agent"]`.
+
 One JSON file can describe the same site:
 
 ```json
