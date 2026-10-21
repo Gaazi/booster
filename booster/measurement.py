@@ -66,6 +66,7 @@ def measure(url: str, requests: int = DEFAULT_REQUESTS,
     for _ in range(max(0, requests - 1)):
         durations.append(fetch_once(url, timeout)["duration_ms"])
     headers = first["headers"]
+    verdict = cache_verdict(url, headers, first["status"])
     return {
         "url": url,
         "status": first["status"],
@@ -76,8 +77,26 @@ def measure(url: str, requests: int = DEFAULT_REQUESTS,
         "p50_ms": percentile(durations, 0.5),
         "p95_ms": percentile(durations, 0.95),
         "samples": len(durations),
-        "verdict": cache_verdict(url, headers, first["status"]),
+        "verdict": verdict,
+        "hint": hosting_hint(url, headers, verdict),
     }
+
+
+def hosting_hint(url: str, headers: Mapping[str, str], verdict: Mapping[str, Any]) -> str:
+    """Explain a refusal that an upstream proxy may have caused."""
+    if verdict.get("cacheable"):
+        return ""
+    lowered = _headers(headers)
+    vary = {part.strip().lower() for part in lowered.get("vary", "").split(",") if part.strip()}
+    extra = sorted(vary - {"accept-encoding"})
+    if extra:
+        return (f"the hosting layer adds Vary: {', '.join(extra)}; check that the bytes are "
+                "identical for every user agent before allowing that field")
+    if lowered.get("age"):
+        return "the hosting layer already aged this response; the engine stores it only while its remaining freshness is positive"
+    if "cache-control" not in lowered:
+        return "this response carries no cache policy; the origin never declared it public"
+    return ""
 
 
 def format_report(report: Mapping[str, Any]) -> str:
@@ -93,6 +112,9 @@ def format_report(report: Mapping[str, Any]) -> str:
         f"p50 / p95 ms   {report['p50_ms']} / {report['p95_ms']}  ({report['samples']} samples)",
         f"booster        {verdict['reason']}  (ttl {verdict['ttl_seconds']}s)",
     ]
+    hint = report.get("hint", "")
+    if hint:
+        lines.append(f"hint           {hint}")
     return "\n".join(lines)
 
 

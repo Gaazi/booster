@@ -130,6 +130,9 @@ the serving process; it is not a fleet-wide cache purge or aggregate report.
 - A response that already carries an `Age` header from an upstream cache is
   stored only while its remaining freshness is positive, and the reported `Age`
   adds the origin age to the time the entry spent in this cache.
+- An upstream proxy or edge cache can replace the `Age` and `Vary` headers the
+  engine sends. Verify the engine itself with `engine.get_status()` and its
+  `bypass_reasons`, not with the client-visible headers of a cached response.
 - The cache is per process, bounded by items and a configurable byte budget
   (`max_cache_bytes`, default 64 MiB). Restarting
   clears it. Multiple workers do not share invalidation.

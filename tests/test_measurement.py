@@ -81,3 +81,23 @@ def test_verdict_explains_a_non_public_status() -> None:
     verdict = cache_verdict("http://example.test/page", {"cache-control": "public"}, 404)
     assert verdict["cacheable"] is False
     assert verdict["reason"] == "status_not_cacheable"
+
+
+def test_hosting_hint_names_the_extra_vary_field() -> None:
+    """A hosting layer that adds a Vary field must be named in the hint."""
+    from booster.measurement import hosting_hint
+
+    headers = {"cache-control": "public, max-age=300", "vary": "Accept-Encoding, User-Agent"}
+    verdict = cache_verdict("http://example.test/static/app.css", headers, 200)
+    hint = hosting_hint("http://example.test/static/app.css", headers, verdict)
+    assert "user-agent" in hint
+    assert "identical" in hint
+
+
+def test_hosting_hint_explains_a_missing_cache_policy() -> None:
+    """A response without any cache policy must be explained."""
+    from booster.measurement import hosting_hint
+
+    headers = {"content-type": "text/css"}
+    verdict = cache_verdict("http://example.test/page", headers, 200)
+    assert "no cache policy" in hosting_hint("http://example.test/page", headers, verdict)

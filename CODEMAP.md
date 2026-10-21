@@ -159,8 +159,9 @@ Generated with `python refresh_docs.py`.
 - `percentile` (line 39): Return one percentile of the measured durations.
 - `cache_verdict` (line 48): Explain whether the engine could store this response and for how long.
 - `measure` (line 61): Measure one URL repeatedly and return a structured report.
-- `format_report` (line 83): Render the report as a short operator-friendly text block.
-- `measure_or_error` (line 99): Measure the URL and return None when it cannot be reached.
+- `hosting_hint` (line 85): Explain a refusal that an upstream proxy may have caused.
+- `format_report` (line 102): Render the report as a short operator-friendly text block.
+- `measure_or_error` (line 121): Measure the URL and return None when it cannot be reached.
 
 ## booster/minifier.py
 
