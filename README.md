@@ -188,6 +188,19 @@ same bypass reasons and the same shared invalidation bus.
 
 ---
 
+### 5. Measure Your Site
+
+```bash
+booster measure https://your-site.example/static/app.css --requests 20
+```
+
+It reports the status, the size, the cache headers, the p50/p95 timings and
+whether the engine could store that response, using the engine's own privacy
+rules. If the verdict is `response_not_public`, the `Vary` header explains
+why.
+
+---
+
 ## 🌐 Live Hosting Deployment (Cloud, VPS & cPanel)
 
 ### A. cPanel / Shared Hosting (No Root / No Redis Needed!)

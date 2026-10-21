@@ -81,7 +81,7 @@ export function booster(options: BoosterOptions = {}): BoosterMiddleware {
     const ctx: ResponseContext = {
       engine, req, res, path, generation: engine.generation,
       key: JSON.stringify([req.headers.host || "", url]),
-      eligible: selected && requestAllowed(req) && !responseBlocksCache(res),
+      eligible: selected && requestAllowed(req) && !responseBlocksCache(res, options.allowedVary ?? []),
     };
     if (req.method !== "GET") guardExplicitHeaders(res);
     if (["POST", "PUT", "PATCH", "DELETE"].includes(req.method || "")) {

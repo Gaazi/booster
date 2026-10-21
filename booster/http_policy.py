@@ -34,24 +34,26 @@ def request_cacheable(headers: dict[str, str], is_static: bool = False) -> bool:
             and "no-cache" not in headers.get("pragma", "").lower())
 
 
-def response_cacheable(headers: dict[str, str], is_static: bool = False) -> bool:
+def response_cacheable(headers: dict[str, str], is_static: bool = False,
+                       allowed_vary: tuple[str, ...] = ()) -> bool:
     """Store only responses safe for a shared representation cache."""
     control = cache_directives(headers)
     vary = {part.strip().lower() for part in headers.get("vary", "").split(",") if part.strip()}
+    accepted = {"accept-encoding"} | {field.lower() for field in allowed_vary}
     if is_static:
         if any(key in headers for key in ("set-cookie", "content-range", "www-authenticate",
                                          "content-encoding", "age", "expires")):
             return False
         if control.intersection({"private", "no-store", "no-cache", "no-transform", "must-revalidate"}):
             return False
-        return "public" in control and vary <= {"accept-encoding"} and response_ttl(headers, 300) > 0
+        return "public" in control and vary <= accepted and response_ttl(headers, 300) > 0
 
     return ("public" in control and not any(key in headers for key in
             ("set-cookie", "content-encoding", "content-range", "www-authenticate"))
             and not control.intersection({"private", "no-store", "no-cache", "no-transform",
                                           "max-age", "s-maxage", "must-revalidate"})
             and "expires" not in headers and "age" not in headers
-            and vary <= {"accept-encoding"})
+            and vary <= accepted)
 
 
 def response_ttl(headers: dict[str, str], default: float) -> float:

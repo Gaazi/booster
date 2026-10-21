@@ -55,7 +55,8 @@ class ASGIResponseOptimizer:
         self.request_eligible = (request_cacheable(request_headers)
                                  and not any(self.scope.get(key) for key in ("user", "auth", "session")))
         self.cacheable = (self.request_eligible
-                          and response_cacheable(headers, is_static=self.is_static))
+                          and response_cacheable(headers, is_static=self.is_static,
+                                                 allowed_vary=self.booster.allowed_vary))
         can_opt = (self.booster.compress_dynamic and message.get("status") == 200
                    and "no-transform" not in cache_directives(headers) | cache_directives(request_headers)
                    and not any(key in headers for key in ("content-encoding", "content-range"))

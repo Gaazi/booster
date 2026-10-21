@@ -35,7 +35,8 @@ class SpeedProxyServer:
     """Accelerate public origin responses without retaining personalized bodies."""
 
     def __init__(self, target_url: str = "http://127.0.0.1:8000",
-                 invalidation_bus: InvalidationBus | None = None) -> None:
+                 invalidation_bus: InvalidationBus | None = None,
+                 allowed_vary: tuple[str, ...] = ()) -> None:
         """Initialize a trusted target and resource limits."""
         self.target_url = validate_target(target_url)
         self.cache = FastMemoryCache(max_items=2000, default_ttl=300.0)
@@ -43,6 +44,7 @@ class SpeedProxyServer:
         self.minifier = FastMinifier()
         self.telemetry = TelemetryTracker()
         self.invalidation_bus = invalidation_bus
+        self.allowed_vary = tuple(field.lower() for field in allowed_vary)
         self._client: httpx.AsyncClient | None = None
         self._requests = asyncio.Semaphore(16)
 
@@ -159,7 +161,7 @@ class SpeedProxyServer:
         original = filtered_headers(list(upstream.headers.raw))
         public = (request.method == "GET" and upstream.status_code == 200
                   and request_cacheable(parse_headers(request.scope.get("headers", [])))
-                  and response_cacheable(parse_headers(original)))
+                  and response_cacheable(parse_headers(original), allowed_vary=self.allowed_vary))
         if public:
             content_type = upstream.headers.get("content-type", "text/plain")
             body = self.minifier.minify(body, content_type)

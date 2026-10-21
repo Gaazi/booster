@@ -102,3 +102,25 @@ test("shared invalidation clears the peer engine cache", async t => {
   assert.equal((await fetchBody(secondUrl)).body, "new");
   assert.equal(second.status().configuration.invalidation, "shared");
 });
+
+test("vary negotiation is accepted and extra fields need the allow list", async t => {
+  const calls = { count: 0 };
+  const origin = (req: http.IncomingMessage, res: http.ServerResponse): void => {
+    calls.count++;
+    res.setHeader("Cache-Control", "public, max-age=60");
+    res.setHeader("Vary", "Accept-Encoding, User-Agent");
+    res.end("body{}");
+  };
+
+  const blocked = booster();
+  const blockedUrl = await server(t, origin, blocked);
+  await fetchBody(`${blockedUrl}/static/app.css`);
+  await fetchBody(`${blockedUrl}/static/app.css`);
+  assert.equal(calls.count, 2, "an extra Vary field must block the cache by default");
+
+  const allowed = booster({allowedVary: ["user-agent"]});
+  const allowedUrl = await server(t, origin, allowed);
+  await fetchBody(`${allowedUrl}/static/app.css`);
+  await fetchBody(`${allowedUrl}/static/app.css`);
+  assert.equal(calls.count, 3, "the allow list must admit the declared field");
+});

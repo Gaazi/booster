@@ -169,6 +169,21 @@ worker only. Never mount the standalone dashboard or proxy on a public site.
 3. Confirm private routes, range requests and signed uploads still bypass the
    cache.
 
+The engine ships a measuring command so the numbers come from a real site:
+
+```bash
+booster measure https://your-site.example/static/app.css --requests 20
+```
+
+It reports the status, the size, the cache headers, the p50/p95 timings and
+whether the engine could store that response, using the engine's own privacy
+rules.
+
+If the report says `response_not_public`, read the `Vary` header. A host that
+adds `Vary: User-Agent` to immutable assets needs an explicit decision, and
+only a site that proves the bytes are identical for every user agent may pass
+`allowed_vary=("user-agent",)`.
+
 Local RAM timings do not prove mobile network or production loading speed.
 Report measured results only.
 

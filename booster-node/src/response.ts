@@ -39,7 +39,8 @@ function compress(ctx: ResponseContext, body: Buffer): Buffer {
 
 /** Store immutable origin bytes only while the request's mutation epoch matches. */
 function storeBody(ctx: ResponseContext, body: Buffer): CacheEntry | null {
-  const ttl = ctx.eligible ? responseTTL(ctx.res, ctx.engine.cache.defaultTTL) : 0;
+  const ttl = ctx.eligible ? responseTTL(ctx.res, ctx.engine.cache.defaultTTL,
+    ctx.engine.options.allowedVary ?? []) : 0;
   if (!ttl) {
     if (ctx.eligible) ctx.engine.bypass.record(REASONS.RESPONSE_DIRECTIVE);
     return null;

@@ -28,8 +28,29 @@ def run_init(arguments: argparse.Namespace) -> int:
     return 0
 
 
+def run_measure(arguments: argparse.Namespace) -> int:
+    """Measure one URL and report whether the engine could store it."""
+    import json
+
+    from booster.measurement import format_report, measure_or_error
+
+    report = measure_or_error(arguments.url, arguments.requests, arguments.timeout)
+    if report is None:
+        print(f"Could not reach {arguments.url}", file=sys.stderr)
+        return 1
+    print(json.dumps(report, indent=2) if arguments.json else format_report(report))
+    return 0
+
+
 def main() -> None:
     """Delegate to the server without loading its dependencies on core import."""
+    if len(sys.argv) > 1 and sys.argv[1] == "measure":
+        parser = argparse.ArgumentParser(prog="booster measure", description="Measure one URL")
+        parser.add_argument("url", help="URL to measure")
+        parser.add_argument("--requests", type=int, default=20, help="How many requests to send")
+        parser.add_argument("--timeout", type=float, default=15.0, help="Timeout per request in seconds")
+        parser.add_argument("--json", action="store_true", help="Print the report as JSON")
+        raise SystemExit(run_measure(parser.parse_args(sys.argv[2:])))
     if len(sys.argv) > 1 and sys.argv[1] == "init":
         parser = argparse.ArgumentParser(prog="booster init", description="Create a Booster adapter")
         parser.add_argument("--path", default=".", help="Host project directory")

@@ -7,11 +7,19 @@ export const MAX_BODY_BYTES = 3_000_000;
 const FORBIDDEN = ["private", "no-store", "no-cache", "no-transform"];
 
 /** Retain outer host privacy decisions on hits as well as misses. */
-export function responseBlocksCache(res: ServerResponse): boolean {
+export function responseBlocksCache(res: ServerResponse, allowedVary: string[] = []): boolean {
   const controls = ["cache-control", "cdn-cache-control", "surrogate-control"]
     .map(name => directives(String(res.getHeader(name) || "")));
-  return controls.some(control => FORBIDDEN.some(name => control.has(name)))
-    || ["set-cookie", "vary", "content-encoding", "content-range"].some(name => res.hasHeader(name));
+  if (controls.some(control => FORBIDDEN.some(name => control.has(name)))) return true;
+  if (["set-cookie", "content-range", "www-authenticate", "content-encoding"].some(name => res.hasHeader(name))) return true;
+  return !varyAccepted(res, allowedVary);
+}
+
+/** Accept only the negotiation fields the site declared it may ignore. */
+function varyAccepted(res: ServerResponse, allowedVary: string[]): boolean {
+  const accepted = new Set(["accept-encoding", ...allowedVary.map(field => field.toLowerCase())]);
+  const vary = String(res.getHeader("vary") || "").split(",").map(value => value.trim().toLowerCase()).filter(Boolean);
+  return vary.every(field => accepted.has(field));
 }
 
 /** Parse directives without substring matching or ambiguous duplicate values. */
@@ -44,12 +52,12 @@ export function originAge(res: ServerResponse): number {
 }
 
 /** Bound RAM TTL by all origin freshness policies and prohibit private variants. */
-export function responseTTL(res: ServerResponse, configured: number): number {
+export function responseTTL(res: ServerResponse, configured: number, allowedVary: string[] = []): number {
   const controls = ["cache-control", "cdn-cache-control", "surrogate-control"]
     .map(name => directives(String(res.getHeader(name) || "")));
   if (controls[0].get("public") !== "" || !Number.isFinite(originAge(res))
     || controls.some(c => FORBIDDEN.some(name => c.has(name)))) return 0;
-  if (res.statusCode !== 200 || responseBlocksCache(res)) return 0;
+  if (res.statusCode !== 200 || responseBlocksCache(res, allowedVary)) return 0;
   let ttl = configured;
   for (const control of controls) {
     const key = control.has("s-maxage") ? "s-maxage" : "max-age";

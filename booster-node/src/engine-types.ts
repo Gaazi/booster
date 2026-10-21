@@ -15,6 +15,7 @@ export interface BoosterOptions {
   invalidationBus?: InvalidationBus;
   includePaths?: string[] | null;
   excludePaths?: string[];
+  allowedVary?: string[];
 }
 
 export type BoosterRequest = IncomingMessage & {

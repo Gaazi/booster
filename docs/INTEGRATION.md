@@ -133,6 +133,22 @@ the serving process; it is not a fleet-wide cache purge or aggregate report.
 - Existing privacy headers, upload checks and rate limits remain application
   responsibilities. Route policy is defense in depth, not authorization.
 
+### When the hosting layer adds its own Vary field
+
+Some hosts add `Vary: User-Agent` to static files. The engine then refuses to
+store them, because a representation that varies by user agent must not be
+shared. If the site proves that the bytes are identical for every user agent
+(same length and same validator for several agents), the host can allow that
+field explicitly:
+
+```python
+engine = booster.attach(app, allowed_vary=("user-agent",))
+```
+
+The Node engine takes the same option as `allowedVary: ["user-agent"]`. The
+default stays closed, and `booster measure <url>` shows the `Vary` header and
+the verdict for a live URL so the decision can be made with evidence.
+
 ### Multiple workers: choose a freshness strategy
 
 Each worker owns its own RAM cache. A mutation or authorized dashboard clear

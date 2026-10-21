@@ -31,6 +31,7 @@ class RocketBooster:
                  cache_policy: CachePolicy | None = None,
                  max_cache_bytes: int = 64 * 1024 * 1024,
                  invalidation_bus: InvalidationBus | None = None,
+                 allowed_vary: tuple[str, ...] = (),
                  _instance: "RocketBooster | None" = None) -> None:
         """Initialize bounded caches or share the instance exposed by attach."""
         if _instance is not None:
@@ -50,6 +51,7 @@ class RocketBooster:
         self.surgical_invalidation = surgical_invalidation
         self.cache_policy = cache_policy or CachePolicy()
         self.invalidation_bus = invalidation_bus
+        self.allowed_vary = tuple(field.lower() for field in allowed_vary)
 
     @classmethod
     def attach(cls, app: Any, **kwargs: Any) -> "RocketBooster":
@@ -210,5 +212,6 @@ class RocketBooster:
                 "dynamic_compression": self.compress_dynamic,
                 "surgical_invalidation": self.surgical_invalidation,
                 "invalidation": "shared" if self.invalidation_bus else "process",
+                "allowed_vary": list(self.allowed_vary),
             },
         }
