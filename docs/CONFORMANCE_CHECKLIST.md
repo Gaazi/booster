@@ -135,3 +135,89 @@ def test_security_headers_survive_a_cache_hit() -> None:
 
 If a check fails, fix the route policy in the adapter file rather than
 relaxing the test.
+
+## Django (WSGI) variant
+
+Django has no route policy, so a Django site opts in per response: only views
+that declare `Cache-Control: public` can enter the cache.
+
+```python
+import pytest
+
+pytest.importorskip("django")
+from django.conf import settings
+from django.http import HttpResponse
+from django.test import RequestFactory
+
+if not settings.configured:
+    settings.configure(DEFAULT_CHARSET="utf-8", ALLOWED_HOSTS=["testserver"])
+
+from booster.django_support import DjangoRocketMiddleware
+
+
+def test_only_public_views_are_cached():
+    """A public view is cached, a private view always reaches the origin."""
+    calls = []
+
+    def origin(request):
+        """Serve the controlled origin response for this scenario."""
+        calls.append(request.path)
+        response = HttpResponse("public" if request.path == "/static/app.css" else "secret")
+        response["Cache-Control"] = "public" if request.path == "/static/app.css" else "private, no-store"
+        return response
+
+    middleware = DjangoRocketMiddleware(origin)
+    factory = RequestFactory()
+
+    def anonymous(path):
+        """Return a request without RequestFactory's synthetic empty cookie."""
+        request = factory.get(path)
+        request.META.pop("HTTP_COOKIE", None)
+        return request
+
+    middleware(anonymous("/static/app.css"))
+    middleware(anonymous("/static/app.css"))
+    assert calls == ["/static/app.css"]
+
+    middleware(anonymous("/account"))
+    middleware(anonymous("/account"))
+    assert calls.count("/account") == 2
+```
+
+## Node.js variant
+
+The Node engine exposes the same guarantees. Run these checks with
+`node --test` in the host project:
+
+```javascript
+import test from "node:test";
+import assert from "node:assert/strict";
+import http from "node:http";
+import { booster } from "booster-node";
+
+test("only public routes are cached", async t => {
+  const middleware = booster({ includePaths: ["/static/"], excludePaths: ["/api/"] });
+  let calls = 0;
+  const server = http.createServer((req, res) => middleware(req, res, () => {
+    calls++;
+    res.setHeader("Cache-Control", "public, max-age=60");
+    res.end("body{}");
+  }));
+  await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
+  t.after(() => { server.closeAllConnections(); server.close(); });
+  const url = `http://127.0.0.1:${server.address().port}`;
+
+  await fetch(`${url}/static/app.css`);
+  await fetch(`${url}/static/app.css`);
+  assert.equal(calls, 1);
+
+  await fetch(`${url}/api/values`);
+  await fetch(`${url}/api/values`);
+  assert.equal(calls, 3);
+
+  assert.equal(middleware.status().metrics.bypassReasons.route_not_selected, 2);
+});
+```
+
+The Node engine's own parity suite lives in `booster-node/test/parity.ts` and
+`booster-node/test/site-config.ts` and runs on every CI build.

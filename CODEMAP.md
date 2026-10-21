@@ -302,11 +302,11 @@ Generated with `python refresh_docs.py`.
 
 ## booster-node/src/cli.ts
 
-- `InitOptions` (line 4): TypeScript declaration.
-- `runInit` (line 13): Generate the adapter and, when asked, the matching site configuration.
-- `usage` (line 23): Print the command help.
-- `parseArgs` (line 36): Parse the command arguments without a dependency on a parser library.
-- `main` (line 52): Run the command and report the created files.
+- `InitOptions` (line 5): TypeScript declaration.
+- `runInit` (line 14): Generate the adapter and, when asked, the matching site configuration.
+- `usage` (line 24): Print the command help.
+- `parseArgs` (line 37): Parse the command arguments without a dependency on a parser library.
+- `main` (line 53): Run the command and report the created files.
 
 ## booster-node/src/compressor.ts
 
