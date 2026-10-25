@@ -1,5 +1,8 @@
 """Conservative shared cache and HTTP header policy."""
 
+import math
+import time
+
 HOP_HEADERS = {"host", "connection", "keep-alive", "proxy-authenticate",
                "proxy-authorization", "te", "trailer", "transfer-encoding", "upgrade"}
 
@@ -34,36 +37,54 @@ def request_cacheable(headers: dict[str, str], is_static: bool = False) -> bool:
             and "no-cache" not in headers.get("pragma", "").lower())
 
 
-def response_cacheable(headers: dict[str, str], is_static: bool = False) -> bool:
+def response_age(headers: dict[str, str]) -> float:
+    """Read the Age header as the number of seconds the response is already old."""
+    value = headers.get("age", "0").strip()
+    return float(value) if value.isascii() and value.isdigit() else math.inf
+
+
+def cached_response_age(headers: list[tuple[bytes, bytes]], created_at: float) -> str:
+    """Advance the origin age by monotonic resident time for every adapter."""
+    values = [value.decode("latin1") for key, value in headers if key.lower() == b"age"]
+    age = response_age({"age": ",".join(values)}) if values else 0
+    return str(int(age + max(0, time.monotonic() - created_at)))
+
+
+def response_cacheable(headers: dict[str, str], is_static: bool = False,
+                       allowed_vary: tuple[str, ...] = ()) -> bool:
     """Store only responses safe for a shared representation cache."""
     control = cache_directives(headers)
     vary = {part.strip().lower() for part in headers.get("vary", "").split(",") if part.strip()}
+    accepted = {"accept-encoding"} | {field.lower() for field in allowed_vary}
     if is_static:
         if any(key in headers for key in ("set-cookie", "content-range", "www-authenticate",
-                                         "content-encoding", "age", "expires")):
+                                         "content-encoding", "expires")):
             return False
         if control.intersection({"private", "no-store", "no-cache", "no-transform", "must-revalidate"}):
             return False
-        return "public" in control and vary <= {"accept-encoding"} and response_ttl(headers, 300) > 0
+        return "public" in control and vary <= accepted and response_ttl(headers, 300) > 0
 
     return ("public" in control and not any(key in headers for key in
             ("set-cookie", "content-encoding", "content-range", "www-authenticate"))
             and not control.intersection({"private", "no-store", "no-cache", "no-transform",
                                           "max-age", "s-maxage", "must-revalidate"})
             and "expires" not in headers and "age" not in headers
-            and vary <= {"accept-encoding"})
+            and vary <= accepted)
 
 
 def response_ttl(headers: dict[str, str], default: float) -> float:
     """Bound static cache retention by the shortest declared freshness limit."""
     limits = [default]
+    age = response_age(headers)
+    if not math.isfinite(age):
+        return 0
     for part in headers.get("cache-control", "").split(","):
         name, separator, value = part.strip().partition("=")
         if name.lower() in {"max-age", "s-maxage"}:
             if not separator or not value.strip('"').isdigit():
                 return 0
-            limits.append(float(value.strip('"')))
-    return min(limits)
+            limits.append(float(value.strip('"')) - age)
+    return max(0, min(limits))
 
 
 def filtered_headers(headers: list[tuple[bytes, bytes]]) -> list[tuple[bytes, bytes]]:

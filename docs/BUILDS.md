@@ -2,13 +2,14 @@
 
 ## Automatic pipeline
 
-Every push/merge to `dev` or `demo`, and every pull request targeting either
+Every push/merge to `dev`, `demo` or `main`, and every pull request targeting these
 branch, runs `.github/workflows/build.yml`. It does not publish packages, deploy
 a website, promote branches automatically or require publishing credentials.
 
 1. Test core-only installation/regressions on Python 3.10; run the full server
    suite on 3.11 and 3.14, including Django privacy regressions. The current
    Starlette server dependency requires Python 3.11+, while core supports 3.10+.
+   Full Python jobs explicitly select Node 24 for the cross-runtime journal test.
 2. Install the locked development toolchain, compile canonical TypeScript and
    check generated public declarations; run native TS tests on Node 22 and 24.
 3. Only after tests pass, build a Python wheel and source archive and use
@@ -50,14 +51,17 @@ python -m scripts.promote_demo
 When the user requests promotion for this occasion, run:
 
 ```powershell
-python -m scripts.promote_demo --authorized
+python -m scripts.promote_demo --authorized --authorization-note "merge dev to demo"
 ```
 
 The command requires Git, an authenticated GitHub CLI, the shared agent merge
 helper, a clean `dev` checkout matching `origin/dev`, a successful dev
-CI run, and a downloaded bundle with matching commit/checksums. It forces a
-fast-forward through the shared merge helper and immediately pushes `demo`.
-GitHub then checks the same artifact on `demo`. No force push, automatic conflict
+CI run, and a downloaded bundle with matching commit/checksums. It invokes the
+shared merge helper with the user's actual instruction and immediately pushes
+`demo`. It checks that the resulting tree equals the verified dev tree and that
+the tested commit is an ancestor. The helper records authorization in a merge
+commit, so GitHub builds and verifies that new demo commit. An identical SHA can
+reuse an existing dev artifact as described above. No force push, automatic conflict
 resolution, main merge or deployment is performed.
 Preview only verifies/downloads the dev build. During an authorized promotion,
 an outdated local `demo` catches up to `origin/demo` only by fast-forward fetch;

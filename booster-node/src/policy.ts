@@ -5,13 +5,22 @@ import type { CacheHeaders } from "./cache.ts";
 
 export const MAX_BODY_BYTES = 3_000_000;
 const FORBIDDEN = ["private", "no-store", "no-cache", "no-transform"];
+type CacheResponse = Pick<ServerResponse, "statusCode" | "getHeader" | "hasHeader">;
 
 /** Retain outer host privacy decisions on hits as well as misses. */
-export function responseBlocksCache(res: ServerResponse): boolean {
+export function responseBlocksCache(res: CacheResponse, allowedVary: string[] = []): boolean {
   const controls = ["cache-control", "cdn-cache-control", "surrogate-control"]
     .map(name => directives(String(res.getHeader(name) || "")));
-  return controls.some(control => FORBIDDEN.some(name => control.has(name)))
-    || ["set-cookie", "vary", "content-encoding", "content-range"].some(name => res.hasHeader(name));
+  if (controls.some(control => FORBIDDEN.some(name => control.has(name)))) return true;
+  if (["set-cookie", "content-range", "www-authenticate", "content-encoding"].some(name => res.hasHeader(name))) return true;
+  return !varyAccepted(res, allowedVary);
+}
+
+/** Accept only the negotiation fields the site declared it may ignore. */
+function varyAccepted(res: CacheResponse, allowedVary: string[]): boolean {
+  const accepted = new Set(["accept-encoding", ...allowedVary.map(field => field.toLowerCase())]);
+  const vary = String(res.getHeader("vary") || "").split(",").map(value => value.trim().toLowerCase()).filter(Boolean);
+  return vary.every(field => accepted.has(field));
 }
 
 /** Parse directives without substring matching or ambiguous duplicate values. */
@@ -35,7 +44,7 @@ export function requestAllowed(req: BoosterRequest): boolean {
 }
 
 /** Include already-aged origin responses when computing their remaining lifetime. */
-export function originAge(res: ServerResponse): number {
+export function originAge(res: CacheResponse): number {
   const value = String(res.getHeader("age") ?? "0");
   if (!/^\d+$/.test(value)) return Infinity;
   const date = res.getHeader("date");
@@ -44,12 +53,12 @@ export function originAge(res: ServerResponse): number {
 }
 
 /** Bound RAM TTL by all origin freshness policies and prohibit private variants. */
-export function responseTTL(res: ServerResponse, configured: number): number {
+export function responseTTL(res: CacheResponse, configured: number, allowedVary: string[] = []): number {
   const controls = ["cache-control", "cdn-cache-control", "surrogate-control"]
     .map(name => directives(String(res.getHeader(name) || "")));
   if (controls[0].get("public") !== "" || !Number.isFinite(originAge(res))
     || controls.some(c => FORBIDDEN.some(name => c.has(name)))) return 0;
-  if (res.statusCode !== 200 || responseBlocksCache(res)) return 0;
+  if (res.statusCode !== 200 || responseBlocksCache(res, allowedVary)) return 0;
   let ttl = configured;
   for (const control of controls) {
     const key = control.has("s-maxage") ? "s-maxage" : "max-age";
@@ -62,6 +71,46 @@ export function responseTTL(res: ServerResponse, configured: number): number {
     ttl = Math.min(ttl, (Date.parse(String(res.getHeader("expires"))) - Date.now()) / 1000);
   }
   return Number.isFinite(ttl) ? Math.max(0, ttl) : 0;
+}
+
+/** Select cacheable routes without embedding website-specific rules. */
+export interface RoutePolicy {
+  includePaths?: string[] | null;
+  excludePaths?: string[];
+}
+
+/** Match complete route names or explicitly slash-terminated subtrees. */
+function matches(path: string, prefix: string): boolean {
+  return prefix.endsWith("/") ? path.startsWith(prefix) : path === prefix;
+}
+
+/** Apply the route policy: exclusions win, and an empty include list selects nothing. */
+export function routeAllowed(path: string, policy: RoutePolicy): boolean {
+  const excluded = policy.excludePaths ?? [];
+  if (excluded.some(prefix => matches(path, prefix))) return false;
+  const included = policy.includePaths;
+  if (included === undefined || included === null) return true;
+  return included.some(prefix => matches(path, prefix));
+}
+
+/** Explain whether the engine could store a response and for how long. */
+export interface CacheVerdict {
+  cacheable: boolean;
+  reason: string;
+  ttlSeconds: number;
+}
+
+/** Judge a plain header record with the engine's own cacheability rules. */
+export function cacheVerdict(headers: Record<string, string | undefined>, status: number,
+                             configuredTtl = 300, allowedVary: string[] = []): CacheVerdict {
+  if (status !== 200) return { cacheable: false, reason: "status_not_cacheable", ttlSeconds: 0 };
+  const response: CacheResponse = {
+    statusCode: status,
+    getHeader: name => headers[name.toLowerCase()],
+    hasHeader: name => headers[name.toLowerCase()] !== undefined,
+  };
+  const ttl = responseTTL(response, configuredTtl, allowedVary);
+  return {cacheable: ttl > 0, reason: ttl > 0 ? "stored" : "response_not_public", ttlSeconds: ttl};
 }
 
 /** Save original end-to-end headers without connection-specific transport fields. */

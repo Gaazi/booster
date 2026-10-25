@@ -2,9 +2,9 @@ name: Verified build
 
 on:
   push:
-    branches: [dev, demo]
+    branches: [dev, demo, main]
   pull_request:
-    branches: [dev, demo]
+    branches: [dev, demo, main]
 
 permissions:
   contents: read
@@ -56,6 +56,10 @@ jobs:
           python-version: ${{ matrix.python }}
           cache: pip
           cache-dependency-path: pyproject.toml
+      - if: matrix.python != '3.10'
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
       - if: matrix.python == '3.10'
         run: python -m pip install . pytest
       - if: matrix.python != '3.10'
@@ -161,6 +165,15 @@ jobs:
           "$RUNNER_TEMP/booster-smoke/bin/python" -m pip install dist/verified/*.whl
           "$RUNNER_TEMP/booster-smoke/bin/python" -m pip check
           "$RUNNER_TEMP/booster-smoke/bin/python" -I -c "import booster; from importlib.resources import files; assert callable(booster.attach); assert files('booster').joinpath('dashboard/index.html').is_file(); assert files('booster').joinpath('dashboard/style.css').is_file(); assert files('booster').joinpath('dashboard/dashboard.js').is_file()"
+      - name: Verify the installed command scaffolds a host project
+        run: |
+          "$RUNNER_TEMP/booster-smoke/bin/booster" init --path "$RUNNER_TEMP/booster-smoke/host" --include /static/css/ --config
+          test -f "$RUNNER_TEMP/booster-smoke/host/booster_plugin.py"
+          test -f "$RUNNER_TEMP/booster-smoke/host/booster.json"
+          grep -q '/static/css/' "$RUNNER_TEMP/booster-smoke/host/booster_plugin.py"
+      - name: Verify the installed command reports the installation
+        run: |
+          "$RUNNER_TEMP/booster-smoke/bin/booster" doctor | grep -q 'pinned commit'
       - name: Check optional standalone installation from the same wheel
         run: |
           wheels=(dist/verified/*.whl)
@@ -172,6 +185,12 @@ jobs:
           mkdir "$RUNNER_TEMP/booster-node-smoke"
           npm install --prefix "$RUNNER_TEMP/booster-node-smoke" --ignore-scripts --no-audit --no-fund dist/verified/*.tgz
           BOOSTER_NODE_ENTRY="$RUNNER_TEMP/booster-node-smoke/node_modules/booster-node/dist/index.js" node --test booster-node/test/test-ts.ts
+      - name: Verify the installed Node command scaffolds a host project
+        run: |
+          node "$RUNNER_TEMP/booster-node-smoke/node_modules/booster-node/dist/cli.js" init --path "$RUNNER_TEMP/booster-node-smoke/host" --include /static/css/ --config
+          test -f "$RUNNER_TEMP/booster-node-smoke/host/booster_plugin.ts"
+          test -f "$RUNNER_TEMP/booster-node-smoke/host/booster.json"
+          grep -q '/static/css/' "$RUNNER_TEMP/booster-node-smoke/host/booster_plugin.ts"
       - name: Report the verified compressed download
         env:
           BUILD_SHA: ${{ github.sha }}

@@ -3,6 +3,7 @@ import type { ServerResponse } from "node:http";
 import { CacheEntry } from "./cache.ts";
 import { isCompressible } from "./compressor.ts";
 import { directives, edgePolicy, MAX_BODY_BYTES, responseTTL, snapshotHeaders } from "./policy.ts";
+import { REASONS } from "./bypass.ts";
 import type { ResponseContext } from "./engine-types.ts";
 import { guardExplicitHeaders } from "./header-guard.ts";
 
@@ -38,14 +39,24 @@ function compress(ctx: ResponseContext, body: Buffer): Buffer {
 
 /** Store immutable origin bytes only while the request's mutation epoch matches. */
 function storeBody(ctx: ResponseContext, body: Buffer): CacheEntry | null {
-  const ttl = ctx.eligible ? responseTTL(ctx.res, ctx.engine.cache.defaultTTL) : 0;
-  if (!ttl || body.length >= MAX_BODY_BYTES || ctx.generation !== ctx.engine.generation) return null;
+  const ttl = ctx.eligible ? responseTTL(ctx.res, ctx.engine.cache.defaultTTL,
+    ctx.engine.options.allowedVary ?? []) : 0;
+  if (!ttl) {
+    if (ctx.eligible) ctx.engine.bypass.record(REASONS.RESPONSE_DIRECTIVE);
+    return null;
+  }
+  if (body.length >= MAX_BODY_BYTES) {
+    ctx.engine.bypass.record(REASONS.TOO_LARGE);
+    return null;
+  }
+  if (ctx.generation !== ctx.engine.generation) return null;
   const declared = ctx.res.getHeader("content-length");
   if (declared !== undefined && Number(declared) !== body.length) return null;
   const entry = ctx.engine.cache.set(ctx.key, ctx.path, 200, snapshotHeaders(ctx.res), body,
     String(ctx.res.getHeader("content-type") || "text/plain"), ttl);
   ctx.res.setHeader("ETag", entry.etag);
   edgePolicy(ctx.res, ttl);
+  ctx.engine.bypass.record(REASONS.STORED);
   return entry;
 }
 
@@ -84,12 +95,13 @@ export function interceptResponse(ctx: ResponseContext): void {
   res.write = function (...args: any[]): boolean {
     streaming = true;
     edgePolicy(res);
+    if (ctx.eligible) ctx.engine.bypass.record(REASONS.STREAMED);
     return write(...args);
   };
   res.end = function (chunk?: any, ...args: any[]): ServerResponse {
     if (streaming || res.headersSent || typeof chunk === "function") { edgePolicy(res); return end(chunk, ...args); }
     const size = typeof chunk === "string" ? Buffer.byteLength(chunk) : (chunk?.byteLength || 0);
-    if (size >= MAX_BODY_BYTES) { edgePolicy(res); return end(chunk, ...args); }
+    if (size >= MAX_BODY_BYTES) { edgePolicy(res); ctx.engine.bypass.record(REASONS.TOO_LARGE); return end(chunk, ...args); }
     const encoding = typeof args[0] === "string" ? args[0] as BufferEncoding : undefined;
     const body = chunk === undefined || chunk === null ? Buffer.alloc(0) : Buffer.from(chunk, encoding);
     const entry = storeBody(ctx, body);

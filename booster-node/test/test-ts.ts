@@ -5,6 +5,10 @@ import zlib from "node:zlib";
 import { booster, FastMemoryCache, ResponseCompressor, FastMinifier, isStaticAsset } from "./engine.ts";
 import type { BoosterOptions } from "../src/index.ts";
 import { request as rawRequest, fixture } from "./cache-regressions.ts";
+import "./parity.ts";
+import "./site-config.ts";
+import "./init.ts";
+import "./cli.ts";
 
 test("FastMemoryCache - set, get, etag, and expiry", async () => {
   const cache = new FastMemoryCache(10, 0.05); // 50ms TTL
@@ -274,3 +278,4 @@ test("TypeScript native - booster middleware initialization with compressDynamic
   assert.strictEqual(typeof middleware, "function");
   assert.strictEqual(isStaticAsset("/static/theme.css"), true);
 });
+import "./review-regressions.ts";

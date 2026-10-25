@@ -3,8 +3,8 @@
 > **Universal Ultra-Fast Caching, Minification, and Compression Engine for Python, Node.js, and Web Apps.**
 
 [![Stable Release](https://img.shields.io/badge/release-v1.0.0%20(Stable)-brightgreen.svg)](https://github.com/Gaazi/booster/releases/tag/v1.0.0)
-[![Python Tests](https://img.shields.io/badge/python%20tests-183%20passed-brightgreen.svg)](https://github.com/Gaazi/booster)
-[![Node Tests](https://img.shields.io/badge/TypeScript%20tests-31%20passed-brightgreen.svg)](https://github.com/Gaazi/booster)
+[![Python Tests](https://img.shields.io/badge/python%20tests-261%20passed-brightgreen.svg)](https://github.com/Gaazi/booster)
+[![Node Tests](https://img.shields.io/badge/TypeScript%20tests-57%20passed-brightgreen.svg)](https://github.com/Gaazi/booster)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/)
 [![Node.js 18+](https://img.shields.io/badge/node-18+-green.svg)](https://nodejs.org/)
@@ -32,6 +32,8 @@ We follow a strict 3-tier release pipeline to guarantee production stability:
 
 Before diving in, consult our architectural specifications and guides:
 - 🏛️ **[Comprehensive Features & System Architecture](docs/FEATURES_AND_ARCHITECTURE.md)** — In-depth technical breakdown of caching mechanics, HTTP RFC 9111 privacy boundaries, mutation invalidation, module map, and Mermaid request lifecycles.
+- 🧩 **[Plugin Recipe](docs/PLUGIN_RECIPE.md)** — Embed Booster as middleware inside any project: adapter file, registration order, route policy and rollout checks.
+- ✅ **[Conformance Checklist](docs/CONFORMANCE_CHECKLIST.md)** — Copy-paste privacy and correctness tests each host project runs before rollout.
 - 🛠️ **[Integration & Review Guide](docs/INTEGRATION.md)** — Safe website integration, framework setup (FastAPI, Django, Node.js), route policies, and middleware ordering.
 - 🎯 **[Workload Recommendations & Use Cases](docs/USE_CASES.md)** — Decision matrix for blogs, APIs, ecommerce, and dynamic sites.
 - 📦 **[Verified Compressed Builds](docs/BUILDS.md)** — Ready-to-install wheel/Node package downloads and verification.
@@ -130,6 +132,85 @@ app.get('/api/data', (req, res) => {
 
 app.listen(3000, () => console.log('Listening on :3000'));
 ```
+
+---
+
+### 4. Use Booster Inside Your Own Project (recommended for production)
+
+Install the reviewed revision from GitHub and let the command scaffold the
+adapter for you:
+
+```bash
+pip install "booster @ git+https://github.com/Gaazi/booster.git@<REVIEWED_COMMIT>"
+booster init --path . --include /static/css/ --include /static/js/ --exclude /media/
+```
+
+`booster init` writes a `booster_plugin.py` file into your project. Register it
+**before** your other middleware so Booster stays the innermost layer and the
+security, CORS, session and compression layers still run on every request:
+
+```python
+from booster_plugin import attach_booster
+
+app = FastAPI()
+attach_booster(app)      # Booster first: it stays the innermost layer
+setup_middlewares(app)   # security, CORS, session, compression after
+```
+
+Prefer a configuration file? Add `--config` and the command also writes
+`booster.json`, which `booster.SiteConfig.from_file()` reads:
+
+```python
+from booster import SiteConfig, attach_from_config
+
+engine = attach_from_config(app, SiteConfig.from_file("booster.json"))
+```
+
+Then run the [conformance checklist](docs/CONFORMANCE_CHECKLIST.md) in your own
+test suite and measure before/after numbers before rollout. Full guide:
+[Plugin Recipe](docs/PLUGIN_RECIPE.md).
+
+Node projects install the same engine from GitHub:
+
+```bash
+npm install github:Gaazi/booster-node#<REVIEWED_COMMIT>
+npx booster-node init --path . --include /static/css/ --exclude /media/ --config
+```
+
+```javascript
+import { buildMiddleware } from "./booster_plugin.ts";
+app.use(buildMiddleware());
+```
+
+The Node engine matches the Python one: the same route policy, the same JSON
+site configuration, the same operator snapshot (`middleware.status()`), the
+same bypass reasons and the same shared invalidation bus.
+
+---
+
+### 5. Measure Your Site
+
+```bash
+booster measure https://your-site.example/static/app.css --requests 20
+```
+
+It reports the status, the size, the cache headers, the p50/p95 timings and
+whether the engine could store that response, using the engine's own privacy
+rules. If the verdict is `response_not_public`, the `Vary` header explains
+why.
+
+### 6. Check the Installation
+
+```bash
+booster doctor
+```
+
+It reports the installed version, where the engine was imported from, the
+pinned commit the server really has, the console script path and the optional
+extras that are missing. A pinned commit is easy to believe and hard to prove:
+`pip` keeps an installed distribution whose name and version match, so this
+command is how a host confirms that the engine code on the server is the code
+it pinned.
 
 ---
 

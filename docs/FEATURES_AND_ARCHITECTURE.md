@@ -104,6 +104,24 @@ Booster provides seven core architectural facilities:
 - **Automatic Dev Port Scanner:** Probes common development ports (8000, 3000, 5000, 8080) on loopback to detect running web servers with one click.
 - **Smart Update Daemon:** Checks GitHub Releases for updates; features a quiet monthly background heartbeat daemon (`updater.py`) for headless servers without intrusive auto-installs.
 
+### 2.8 Shared Invalidation Between Workers (`invalidation.py`)
+- **The Stale Window It Closes:** Every worker owns its own RAM cache, so a write that reaches one worker leaves the other workers serving an old copy until their entry expires.
+- **Opt-In Bus (`InvalidationBus`):** The worker that handled the write publishes the invalidation scope; every other worker applies it before it serves its next request. Without a bus the documented process-local behaviour is unchanged.
+- **File-Backed Bus (`FileInvalidationBus`):** Standard-library only, for workers on one host. Python and Node share generation-tagged JSON records and a bounded directory lock. Rotation forces existing readers to clear even after the journal refills. Peer invalidations retire in-flight Node capture contexts. See `INTEGRATION.md` for coordinated upgrades, local-filesystem limits and lock recovery.
+- **Scope Fidelity:** The published notice matches the local scope exactly: a prefix notice for surgical invalidation, a full-clear notice otherwise.
+- **Proven With Real Processes:** `tests/test_shared_invalidation.py` runs two worker processes and proves the peer returns fresh bytes after the other worker wrote, and that the process-local boundary is unchanged when no bus is configured.
+
+### 2.9 Declarative Site Configuration (`site_config.py`)
+- **One JSON File:** `SiteConfig.from_file()` turns `booster.json` into the route policy, the TTL, the byte budget, the compression and minification switches and the optional shared invalidation file.
+- **Fail-Fast Validation:** An unknown key, a relative route prefix or a non-positive limit is rejected with a clear error instead of being ignored.
+- **Standard Library Only:** The module adds no runtime dependency, so core stays installable without extras.
+- **Scaffolding Command:** `booster init --config` writes the matching `booster.json` next to the generated adapter, and the Node engine offers the same flow through `npx booster-node init`.
+
+### 2.10 Operator Visibility: Bypass Reasons (`bypass.py`)
+- **Why Was This Not Cached:** Every response that is not stored is counted under a fixed reason name: `credentialed_request`, `personalized_scope`, `route_not_selected`, `response_not_public`, `request_directive`, `method_not_read`, `streamed_response`, `body_too_large`, `already_encoded` or `stored`.
+- **No Request Data:** The counters hold reason names only. No cookie, token, path, query or payload is recorded, so the snapshot can be shown to an operator or embedded in a host dashboard.
+- **Same In Node:** `middleware.status()` returns the same snapshot and the same reason counters.
+
 ---
 
 ## 5. System Architecture & Workflows
@@ -176,6 +194,10 @@ booster/
 ├── compressor.py         # ResponseCompressor: Brotli and Gzip adaptive compression
 ├── django_support.py     # DjangoRocketMiddleware: WSGI/Django cache adapter
 ├── http_policy.py        # RFC 9111 HTTP compliance, privacy rules, and header filtering
+├── invalidation.py       # InvalidationBus: shared notices between worker processes
+├── bypass.py             # BypassTracker: why a response was not stored (no request data)
+├── site_config.py        # SiteConfig: declarative JSON site configuration
+├── initializer.py        # Adapter scaffolding for `booster init`
 ├── local_security.py     # LocalAccessGuard: DNS rebinding defense and X-Booster-Admin auth
 ├── minifier.py           # FastMinifier: conservative JSON minification
 ├── proxy.py              # SpeedProxyServer: standalone reverse proxy engine
@@ -194,6 +216,8 @@ docs/                     # Specialized Technical Guides
 ├── BUILDS.md             # Package build bundle, verification, and promotion
 ├── FEATURES_AND_ARCHITECTURE.md # (This file) Complete reference & architecture
 ├── INTEGRATION.md        # Step-by-step framework integration and review guide
+├── PLUGIN_RECIPE.md      # Copy-ready recipe for embedding Booster in a host project
+├── CONFORMANCE_CHECKLIST.md # Copy-paste privacy and correctness tests for a host
 ├── NEXT_STEPS.md         # Priority handoff tasks for next agents
 └── USE_CASES.md          # Workload-based suitability and decision matrix
 
@@ -280,7 +304,7 @@ booster --target http://127.0.0.1:8000
 When integrating or maintaining Booster, all agents must adhere to the following principles:
 
 1. **Never Cache Personalized HTML:** Never cache responses containing user names, account IDs, session tokens, or CSRF tokens. Public page caching is valid only when every visitor receives the exact same representation.
-2. **Per-Process Memory Budgets:** The RAM cache lives inside the running process. In multi-worker deployments (e.g. Gunicorn with multiple Uvicorn workers), each worker maintains an independent cache. Multi-worker invalidations do not synchronize automatically across worker boundaries.
+2. **Per-Process Memory Budgets:** The RAM cache lives inside the running process. In multi-worker deployments (e.g. Gunicorn with multiple Uvicorn workers), each worker maintains an independent cache. Pass one shared invalidation bus (`FileInvalidationBus`) when the workers share a host and must see each other's writes; otherwise exclude mutable routes from the cache.
 3. **One Compression Owner:** If upstream or a CDN reverse proxy already performs Gzip/Brotli compression, disable Booster's compression (`enable_compression=False`) to avoid duplicate CPU work.
 4. **Preserve Range & Stream Requests:** Booster deliberately bypasses media streaming and HTTP 206 Partial Content requests; never attempt to force large audio/video streams into RAM cache.
 5. **Conservative Minification:** Do not replace `FastMinifier` with naive regular-expression string replacers on HTML/CSS; whitespace and comments can carry syntax meaning in modern web templates.
@@ -294,8 +318,13 @@ Follow these three steps to integrate Booster into any new or existing project a
 ### Step 1: Install & Pin Booster
 Add the pinned commit or built distribution into your host project's requirements:
 ```bash
-pip install "booster @ git+https://github.com/Gaazi/booster.git@dev"
+pip install "booster @ git+https://github.com/Gaazi/booster.git@<REVIEWED_COMMIT>"
+booster init --path . --include /static/ --exclude /media/ --config
 ```
+The command writes a ready-to-edit `booster_plugin.py` (and the matching
+`booster.json` with `--config`) into the host project. Node projects use
+`npm install github:Gaazi/booster-node#<REVIEWED_COMMIT>` and
+`npx booster-node init`.
 
 ### Step 2: Attach Middleware with Public Route Scope
 Wrap your app with `booster.attach()`, scoping cache admission to public static files (`/static/`) and unauthenticated public GET endpoints:
@@ -318,3 +347,4 @@ Run your integration tests:
 1. Confirm that `/static/style.css` returns an `ETag` and responds with `304 Not Modified` on re-request.
 2. Confirm that logged-in responses (`/dashboard`, `/profile`) carry `Cache-Control: private` or cookies and pass through untouched without any caching.
 3. Check CPU and memory usage using `engine.get_status()` to ensure memory usage stays strictly within your byte allocation.
+4. Run the [conformance checklist](CONFORMANCE_CHECKLIST.md) in the host project's own test suite, and read `metrics["bypass_reasons"]` to confirm that every expected route is cached for the right reason.

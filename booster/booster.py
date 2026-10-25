@@ -4,12 +4,19 @@ import time
 from typing import Any, Callable
 
 from booster.asgi_response import ASGIResponseOptimizer, parse_headers, representation_headers
-from booster.http_policy import request_cacheable
+from booster.http_policy import cached_response_age, request_cacheable
 from booster.cache import FastMemoryCache
 from booster.compressor import ResponseCompressor
 from booster.minifier import FastMinifier
 from booster.telemetry import TelemetryTracker
 from booster.cache_policy import CachePolicy
+from booster.invalidation import FULL_CLEAR, InvalidationBus
+from booster.bypass import BypassTracker
+from booster.bypass import CREDENTIALS as BYPASS_CREDENTIALS
+from booster.bypass import METHOD as BYPASS_METHOD
+from booster.bypass import PERSONALIZED as BYPASS_PERSONALIZED
+from booster.bypass import POLICY as BYPASS_POLICY
+from booster.bypass import REQUEST_DIRECTIVE as BYPASS_REQUEST_DIRECTIVE
 
 parse_asgi_headers = parse_headers
 
@@ -23,6 +30,8 @@ class RocketBooster:
                  surgical_invalidation: bool = False,
                  cache_policy: CachePolicy | None = None,
                  max_cache_bytes: int = 64 * 1024 * 1024,
+                 invalidation_bus: InvalidationBus | None = None,
+                 allowed_vary: tuple[str, ...] = (),
                  _instance: "RocketBooster | None" = None) -> None:
         """Initialize bounded caches or share the instance exposed by attach."""
         if _instance is not None:
@@ -35,11 +44,14 @@ class RocketBooster:
         self.compressor = ResponseCompressor(min_size=min_compress_size)
         self.minifier = FastMinifier()
         self.telemetry = TelemetryTracker()
+        self.bypass = BypassTracker()
         self.enable_minification = enable_minification
         self.enable_compression = enable_compression
         self.compress_dynamic = compress_dynamic
         self.surgical_invalidation = surgical_invalidation
         self.cache_policy = cache_policy or CachePolicy()
+        self.invalidation_bus = invalidation_bus
+        self.allowed_vary = tuple(field.lower() for field in allowed_vary)
 
     @classmethod
     def attach(cls, app: Any, **kwargs: Any) -> "RocketBooster":
@@ -62,6 +74,7 @@ class RocketBooster:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
+        self.apply_pending_invalidations()
         method = scope.get("method", "GET").upper()
         path = scope.get("path", "/")
         if method in ("POST", "PUT", "DELETE", "PATCH"):
@@ -69,11 +82,13 @@ class RocketBooster:
             return
         headers = parse_headers(scope.get("headers", []))
         if method != "GET" or not self.cache_policy.allows(path):
+            self.bypass.record(BYPASS_METHOD if method != "GET" else BYPASS_POLICY)
             await self.app(scope, receive, send)
             return
 
-        if (not request_cacheable(headers)
-                or any(scope.get(key) for key in ("user", "auth", "session"))):
+        reason = self._bypass_reason(scope, headers)
+        if reason is not None:
+            self.bypass.record(reason)
             if self.compress_dynamic:
                 await self._passthrough_and_cache(scope, receive, send, path, headers)
             else:
@@ -84,9 +99,20 @@ class RocketBooster:
             return
         await self._passthrough_and_cache(scope, receive, send, path, headers)
 
+    def _bypass_reason(self, scope: dict[str, Any], headers: dict[str, str]) -> str | None:
+        """Explain why this request may not use the shared cache."""
+        if any(scope.get(key) for key in ("user", "auth", "session")):
+            return BYPASS_PERSONALIZED
+        if headers.get("cookie") or headers.get("authorization"):
+            return BYPASS_CREDENTIALS
+        if not request_cacheable(headers):
+            return BYPASS_REQUEST_DIRECTIVE
+        return None
+
     async def _handle_mutation(self, scope: dict[str, Any], receive: Callable, send: Callable) -> None:
         """Invalidate before and after writes, including failed or concurrent writes."""
         path = scope.get("path", "/")
+        self.bypass.record(BYPASS_METHOD)
         self._invalidate(path)
         try:
             await self.app(scope, receive, send)
@@ -97,8 +123,30 @@ class RocketBooster:
         """Keep full invalidation safe by default for cross-route dependencies."""
         if self.surgical_invalidation:
             self.cache.invalidate_path_prefix(path)
+            self.publish_invalidation(path)
         else:
             self.cache.clear()
+            self.publish_invalidation(FULL_CLEAR)
+
+    def publish_invalidation(self, prefix: str) -> None:
+        """Tell the other workers that cached reads are no longer valid."""
+        if self.invalidation_bus is not None:
+            self.invalidation_bus.publish(prefix)
+
+    def apply_pending_invalidations(self) -> None:
+        """Apply the invalidation notices published by the other workers."""
+        if self.invalidation_bus is None:
+            return
+        for notice in self.invalidation_bus.drain():
+            if notice == FULL_CLEAR:
+                self.cache.clear()
+            else:
+                self.cache.invalidate_path_prefix(notice)
+
+    def clear_cache(self) -> None:
+        """Clear the local cache and tell the other workers to clear theirs."""
+        self.cache.clear()
+        self.publish_invalidation(FULL_CLEAR)
 
     async def _handle_get(self, scope: dict[str, Any], receive: Callable, send: Callable,
                           path: str, headers: dict[str, str]) -> bool:
@@ -115,7 +163,8 @@ class RocketBooster:
             if self.enable_compression:
                 body, encoding = self.compressor.compress(body, cached.content_type,
                                                           headers.get("accept-encoding", ""))
-            stored_headers = cached.headers + [(b"age", str(int(time.monotonic() - cached.created_at)).encode("ascii"))]
+            stored_headers = [(key, value) for key, value in cached.headers if key.lower() != b"age"]
+            stored_headers.append((b"age", self._age_value(cached)))
             await self._send_cached(send, cached.status_code, cached.content_type, body,
                                     cached.etag, encoding, stored_headers)
             size, status = len(body), cached.status_code
@@ -128,10 +177,15 @@ class RocketBooster:
         """Retain origin cache and security headers on conditional cache hits."""
         headers = representation_headers(cached.headers, b"", cached.etag, None)
         headers = [(key, value) for key, value in headers if key.lower() not in
-                   {b"content-length", b"content-type"}]
-        headers.append((b"age", str(int(time.monotonic() - cached.created_at)).encode("ascii")))
+                   {b"content-length", b"content-type", b"age"}]
+        headers.append((b"age", self._age_value(cached)))
         await send({"type": "http.response.start", "status": 304, "headers": headers})
         await send({"type": "http.response.body", "body": b""})
+
+    @staticmethod
+    def _age_value(cached: Any) -> bytes:
+        """Report the origin age plus the time the entry spent in this cache."""
+        return cached_response_age(cached.headers, cached.created_at).encode("ascii")
 
     async def _send_cached(self, send: Callable, status: int, content_type: str, body: bytes,
                            etag: str, encoding: str | None,
@@ -151,6 +205,7 @@ class RocketBooster:
         from booster import __version__
         metrics = self.telemetry.get_stats()
         metrics.pop("recent_logs", None)
+        metrics["bypass_reasons"] = self.bypass.get_counts()
         return {
             "active": True, "version": __version__, "cache": self.cache.get_stats(),
             "metrics": metrics,
@@ -162,5 +217,7 @@ class RocketBooster:
                 "minification": self.enable_minification,
                 "dynamic_compression": self.compress_dynamic,
                 "surgical_invalidation": self.surgical_invalidation,
+                "invalidation": "shared" if self.invalidation_bus else "process",
+                "allowed_vary": list(self.allowed_vary),
             },
         }

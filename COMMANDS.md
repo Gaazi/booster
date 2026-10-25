@@ -18,7 +18,7 @@ Run from the project root directory.
 | Promote dev to demo when explicitly requested | `python -m scripts.promote_demo --authorized` |
 | Verify a compressed download | `python -m scripts.build_bundle verify PATH.zip --sha FULL_COMMIT_SHA` |
 
-Pushes/merges on `dev` and `demo` automatically run tests and create compressed
+Pushes/merges on `dev`, `demo` and `main` automatically run tests and create compressed
 Python/Node downloads. See [verified builds and promotion](docs/BUILDS.md).
 For workload-specific recommendations, see [where Booster helps](docs/USE_CASES.md).
 

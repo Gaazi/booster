@@ -62,13 +62,15 @@ def verified_download(repo: Path, sha: str) -> Path:
     return bundle
 
 
-def promote(repo: Path, authorized: bool) -> Path:
+def promote(repo: Path, authorized: bool, authorization_note: str = "") -> Path:
     """Verify first, then use the shared merge helper and immediately push demo."""
     sha = check_checkout(repo)
     bundle = verified_download(repo, sha)
     if not authorized:
         print(f"Verified {sha}; preview only. Use --authorized for a requested promotion.")
         return bundle
+    if not authorization_note.strip():
+        raise ValueError("The user's explicit merge instruction is required")
     if check_checkout(repo) != sha:
         raise ValueError("Dev changed during verification; verify the new build first")
     prepare_demo(repo)
@@ -78,22 +80,31 @@ def promote(repo: Path, authorized: bool) -> Path:
     command(repo, [
         sys.executable, str(helper), "merge", "--repo", str(repo),
         "--source", "dev", "--target", "demo", "--authorized",
+        "--authorization-note", authorization_note,
     ])
+    verify_promotion(repo, sha)
+    print(f"Promoted verified tree {sha} to demo; compressed dev build: {bundle}")
+    return bundle
+
+
+def verify_promotion(repo: Path, sha: str) -> None:
+    """Push immediately and verify the authorized merge retained the tested tree."""
     command(repo, ["git", "push", "origin", "demo"])
     remote = command(repo, ["git", "ls-remote", "origin", "refs/heads/demo"])
-    if remote.split()[0] != sha:
-        raise RuntimeError("Remote demo does not match the verified commit")
-    print(f"Promoted verified commit {sha} to demo; compressed build: {bundle}")
-    return bundle
+    if remote.split()[0] != command(repo, ["git", "rev-parse", "demo"]):
+        raise RuntimeError("Remote demo does not match the local promotion")
+    command(repo, ["git", "merge-base", "--is-ancestor", sha, "demo"])
+    command(repo, ["git", "diff", "--exit-code", sha, "demo", "--"])
 
 
 def main() -> None:
     """Preview promotion unless this invocation explicitly authorizes it."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--authorized", action="store_true")
+    parser.add_argument("--authorization-note", default="")
     args = parser.parse_args()
     repo = Path(__file__).resolve().parents[1]
-    promote(repo, args.authorized)
+    promote(repo, args.authorized, args.authorization_note)
 
 
 if __name__ == "__main__":

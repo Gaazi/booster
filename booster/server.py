@@ -91,7 +91,7 @@ async def set_target(payload: Dict[str, str]) -> JSONResponse:
 @app.post("/api/clear-cache")
 async def clear_cache() -> JSONResponse:
     """Flush in-memory cache and reset telemetry."""
-    proxy.cache.clear()
+    proxy.clear_cache()
     proxy.telemetry.reset()
     cdn = CDNManager(CDNConfig.from_env())
     asyncio.create_task(cdn.purge_all())

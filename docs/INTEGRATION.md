@@ -13,6 +13,24 @@ removes the retired package and command. Existing consumers must use Booster
 imports before upgrading. The Python ASGI/Django engine and Node engine are
 separate runtime implementations; Python consumers do not install Node.
 
+## Plugin recipe
+
+[PLUGIN_RECIPE.md](PLUGIN_RECIPE.md) is the step-by-step recipe for embedding
+Booster as middleware inside a host project: adapter file, registration order,
+route policy, one compression owner, worker limits and rollout verification.
+The installed command `booster init --path . --include /static/` writes the
+adapter file into the host project, and `--config` adds a `booster.json` that
+`booster.SiteConfig.from_file()` reads.
+[CONFORMANCE_CHECKLIST.md](CONFORMANCE_CHECKLIST.md) is the copy-paste test file
+each host project runs to prove that private data never enters the shared cache.
+
+The Node engine provides the same operator features: `middleware.status()`
+returns the snapshot, `metrics.bypassReasons` counts why a response was not
+stored, `FileInvalidationBus` gives workers on one host the same shared
+invalidation, and `loadSiteConfig()` reads the same JSON site configuration
+with the same route rules. See
+[booster-node/README.md](../booster-node/README.md).
+
 ## Install a reviewed revision
 
 Pin a full reviewed Git commit in the consuming application's requirements:
@@ -26,6 +44,13 @@ similarly named package or follow a moving branch in production. `attach()`
 starts no dashboard, proxy, port scan, update worker or separate process.
 Standalone update checks do not auto-install by default; keep
 `BOOSTER_AUTO_UPDATE=false` for reviewed deployments.
+
+**Bump the version with every engine change.** A pinned commit still keeps the
+same package version until the project version changes, and `pip` treats an
+already installed distribution with that name and version as satisfied. Without
+a version bump the server keeps the older engine code and a new option appears
+to be missing. `booster doctor` reports the installed version and the commit
+the server really has, which is how a host confirms this.
 
 The default installation contains the core cache/compression engine without
 server dependencies. The host provides its own ASGI/Django framework. Optional
@@ -83,10 +108,15 @@ secrets and when another layer already owns compression.
 
 Use `engine.get_status()` for the shared version, configuration, cache memory
 and processed-response counters. It exposes no cache keys, payloads or request
-logs. The host website must authorize an administrator before reading this
-snapshot or calling `engine.cache.clear()`. Keep both actions under its existing
-owner dashboard, and apply the host's private/no-store and CSRF/origin policies.
-Do not mount the standalone dashboard or proxy on the public website.
+logs. `metrics["bypass_reasons"]` counts why a response was not stored, for
+example `credentialed_request`, `route_not_selected`, `response_not_public`,
+`request_directive`, `method_not_read`, `streamed_response` or
+`body_too_large`. The counters hold fixed reason names only: no cookie, token,
+path or payload is recorded. The host website must authorize an administrator
+before reading this snapshot or calling `engine.cache.clear()`. Keep both
+actions under its existing owner dashboard, and apply the host's
+private/no-store and CSRF/origin policies. Do not mount the standalone
+dashboard or proxy on the public website.
 
 Counters describe responses processed by Booster, not browser page-load times.
 Resident memory includes entries awaiting lazy expiry. With external compression
@@ -98,6 +128,12 @@ the serving process; it is not a fleet-wide cache purge or aggregate report.
 
 - Origin static max-age/s-maxage bounds the configured RAM TTL. Cache hits report
   Age; conditional hits retain origin cache/security headers.
+- A response that already carries an `Age` header from an upstream cache is
+  stored only while its remaining freshness is positive, and the reported `Age`
+  adds the origin age to the time the entry spent in this cache.
+- An upstream proxy or edge cache can replace the `Age` and `Vary` headers the
+  engine sends. Verify the engine itself with `engine.get_status()` and its
+  `bypass_reasons`, not with the client-visible headers of a cached response.
 - The cache is per process, bounded by items and a configurable byte budget
   (`max_cache_bytes`, default 64 MiB). Restarting
   clears it. Multiple workers do not share invalidation.
@@ -110,6 +146,22 @@ the serving process; it is not a fleet-wide cache purge or aggregate report.
 - Existing privacy headers, upload checks and rate limits remain application
   responsibilities. Route policy is defense in depth, not authorization.
 
+### When the hosting layer adds its own Vary field
+
+Some hosts add `Vary: User-Agent` to static files. The engine then refuses to
+store them, because a representation that varies by user agent must not be
+shared. If the site proves that the bytes are identical for every user agent
+(same length and same validator for several agents), the host can allow that
+field explicitly:
+
+```python
+engine = booster.attach(app, allowed_vary=("user-agent",))
+```
+
+The Node engine takes the same option as `allowedVary: ["user-agent"]`. The
+default stays closed, and `booster measure <url>` shows the `Vary` header and
+the verdict for a live URL so the decision can be made with evidence.
+
 ### Multiple workers: choose a freshness strategy
 
 Each worker owns its own RAM cache. A mutation or authorized dashboard clear
@@ -118,6 +170,39 @@ clear endpoint do not guarantee that every worker has received the request.
 The Python two-process regression in `tests/test_workers.py` verifies this
 boundary, credential bypass on a stale peer, and recovery after clearing both
 workers explicitly. It also verifies static-only route selection across workers.
+
+**Shared invalidation (opt-in).** When the workers run on the same host, pass
+one shared notice file so every worker applies the invalidation before it
+serves the next request:
+
+```python
+from booster import FileInvalidationBus
+
+engine = booster.attach(app, invalidation_bus=FileInvalidationBus("/var/run/booster/notices.log"))
+```
+
+The worker that handled the write publishes the notice; every other worker
+applies it on its next request. Python and Node use the same generation header,
+JSON record format and bounded local directory lock. Rotation changes the
+generation, so even a slow reader that sees an already-refilled file clears its
+cache. An invalidation also retires older in-flight Node capture contexts.
+The byte cap has a minimum metadata footprint of 34 bytes. Idle workers apply
+notices before their next read; their resident entries may remain until then.
+`tests/test_shared_invalidation.py` runs two real processes and
+proves the peer returns the fresh body after the other worker wrote, and that
+the documented process-local behaviour is unchanged when no bus is configured.
+`engine.get_status()["configuration"]["invalidation"]` reports `shared` or
+`process`.
+
+Keep the notice file in a trusted directory outside public static roots. Upgrade
+all workers together: the generation/JSON journal replaces the earlier plain-text
+format, and mixed old/new bus implementations are unsupported. The file bus is
+for one local filesystem, not a network filesystem or distributed cache service.
+If a publisher crashes while holding `notices.log.lock`, calls fail closed after
+five seconds. An operator must stop the participating workers, verify that the
+lock has no live owner, remove that empty lock directory and restart the workers;
+Booster never steals a lock based on its age. Do not roll out mutable caching
+without verifying these failure and recovery conditions on the target host.
 
 For the lightest deployment, use the static-only `CachePolicy` example above.
 Exclude mutable catalog, price, stock, account and live-status routes even when

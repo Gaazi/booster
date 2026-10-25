@@ -4,6 +4,7 @@ from typing import Any, Callable
 
 from booster.http_policy import (response_cacheable, request_cacheable, response_ttl,
                                  cache_directives, merge_vary, is_static_asset)
+from booster.bypass import ENCODED, RESPONSE_DIRECTIVE, STATUS, STORED, STREAMED, TOO_LARGE
 
 
 def parse_headers(raw: list[tuple[bytes, bytes]]) -> dict[str, str]:
@@ -51,15 +52,28 @@ class ASGIResponseOptimizer:
         self.start = dict(message)
         headers = parse_headers(message.get("headers", []))
         request_headers = parse_headers(self.scope.get("headers", []))
-        self.cacheable = (request_cacheable(request_headers)
-                          and not any(self.scope.get(key) for key in ("user", "auth", "session"))
-                          and response_cacheable(headers, is_static=self.is_static))
+        self.request_eligible = (request_cacheable(request_headers)
+                                 and not any(self.scope.get(key) for key in ("user", "auth", "session")))
+        self.cacheable = (self.request_eligible
+                          and response_cacheable(headers, is_static=self.is_static,
+                                                 allowed_vary=self.booster.allowed_vary))
         can_opt = (self.booster.compress_dynamic and message.get("status") == 200
                    and "no-transform" not in cache_directives(headers) | cache_directives(request_headers)
                    and not any(key in headers for key in ("content-encoding", "content-range"))
                    and not any(key in request_headers for key in ("range", "if-range")))
         self.forwarding = (message.get("status") != 200 or message.get("trailers", False)
                            or (not self.cacheable and not can_opt))
+        self._record_response_reason(headers)
+
+    def _record_response_reason(self, headers: dict[str, str]) -> None:
+        """Explain why an eligible request was not stored."""
+        if not self.request_eligible:
+            return
+        if self.start.get("status") != 200:
+            self.booster.bypass.record(STATUS)
+        elif not self.cacheable:
+            reason = ENCODED if "content-encoding" in headers else RESPONSE_DIRECTIVE
+            self.booster.bypass.record(reason)
 
     async def _collect_body(self, message: dict[str, Any]) -> bool:
         """Buffer bounded public static files while forwarding dynamic streams promptly."""
@@ -71,6 +85,7 @@ class ASGIResponseOptimizer:
                 or (message.get("more_body") and not bounded_static)
                 or len(self.body) + len(message.get("body", b"")) > 2_000_000):
             self.forwarding = True
+            self._record_body_reason(message, bounded_static)
             await self.send(self.start)
             if self.body:
                 await self.send({"type": "http.response.body", "body": bytes(self.body), "more_body": True})
@@ -79,6 +94,15 @@ class ASGIResponseOptimizer:
             return False
         self.body.extend(message.get("body", b""))
         return not message.get("more_body", False)
+
+    def _record_body_reason(self, message: dict[str, Any], bounded_static: bool) -> None:
+        """Explain why an eligible response body was not buffered."""
+        if not self.request_eligible:
+            return
+        if message.get("more_body") and not bounded_static:
+            self.booster.bypass.record(STREAMED)
+        elif len(self.body) + len(message.get("body", b"")) > 2_000_000:
+            self.booster.bypass.record(TOO_LARGE)
 
     async def _optimized_cacheable(self, raw_body: bytes) -> None:
         """Minify and compress public bytes, preserving unrelated response fields."""
@@ -91,6 +115,7 @@ class ASGIResponseOptimizer:
         entry = booster.cache.set_if_current(self.generation, key, self.scope.get("path", "/"),
                                              200, original, body, content_type,
                                              response_ttl(parse_headers(original), booster.cache.default_ttl))
+        booster.bypass.record(STORED)
         encoding = None
         if booster.enable_compression:
             body, encoding = booster.compressor.compress(body, content_type,

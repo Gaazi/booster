@@ -9,6 +9,8 @@ from booster.compressor import ResponseCompressor
 from booster.minifier import FastMinifier
 from booster.telemetry import TelemetryTracker
 from booster.cache_policy import CachePolicy
+from booster.invalidation import FileInvalidationBus, LocalInvalidationBus
+from booster.site_config import SiteConfig, attach_from_config
 
 if TYPE_CHECKING:
     from booster.cdn import CDNConfig, CDNManager
@@ -22,7 +24,7 @@ _OPTIONAL_EXPORTS = {
     "SpeedProxyServer": ("booster.proxy", "server"),
 }
 
-__version__ = "1.0.1.dev1"
+__version__ = "1.0.4.dev1"
 
 # Direct top-level helper for maximum simplicity
 attach = RocketBooster.attach
@@ -54,4 +56,8 @@ __all__ = [
     "CDNConfig",
     "attach",
     "CachePolicy",
+    "FileInvalidationBus",
+    "LocalInvalidationBus",
+    "SiteConfig",
+    "attach_from_config",
 ]
