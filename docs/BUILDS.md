@@ -2,13 +2,14 @@
 
 ## Automatic pipeline
 
-Every push/merge to `dev` or `demo`, and every pull request targeting either
+Every push/merge to `dev`, `demo` or `main`, and every pull request targeting these
 branch, runs `.github/workflows/build.yml`. It does not publish packages, deploy
 a website, promote branches automatically or require publishing credentials.
 
 1. Test core-only installation/regressions on Python 3.10; run the full server
    suite on 3.11 and 3.14, including Django privacy regressions. The current
    Starlette server dependency requires Python 3.11+, while core supports 3.10+.
+   Full Python jobs explicitly select Node 24 for the cross-runtime journal test.
 2. Install the locked development toolchain, compile canonical TypeScript and
    check generated public declarations; run native TS tests on Node 22 and 24.
 3. Only after tests pass, build a Python wheel and source archive and use

@@ -119,3 +119,11 @@
 - Checks: local release gate Python 261 passed and Node 57 passed; actual concurrent Python/Node publishers, actual CLI process, TypeScript build/public types, Python syntax, changed-file audit, pip check and npm audit (0 findings). Prior green CI at reviewed checkpoint was not sufficient: new failing regressions proved defects before fixes.
 - Commits: reviewed HEAD 447693df1cb87b45280eb8f67becda0a497c6fb0; fixes and this entry are committed together on dev (resolve exact commit with git log -- docs/REVIEW_2026-10-25.md).
 - Pending: exact-commit CI/package verification, then user-authorized dev -> demo -> main promotions. Authorization: "agar sab kuch thik hi to dev to demo after demo to main push karo". No live deployment/restart authorized. Real-device/network and production proof remain pending; mixed journal versions are unsupported.
+
+## 2026-10-25 10:24 IST - Final branch build gate
+
+- Agent/model: Codex (GPT-6); focused CI configuration follow-up.
+- Done: d2d429b3ce12de4d54396662f00a5b10bfbd69e0 passed GitHub run 40163337136 including installed distributions. Added main push/PR builds and an explicit Node 24 runtime for full Python cross-runtime tests; retained read-only workflow permissions and no deployment steps.
+- Checks: workflow branch/runtime/permission invariants and diff check; build-pipeline regressions. Local PyYAML is unavailable; GitHub parsing and the exact-commit run are the formal YAML gate. Runtime code is unchanged from the 261 Python / 57 Node passing release gate.
+- Commits: d2d429b3ce12de4d54396662f00a5b10bfbd69e0 for reviewed fixes; this CI follow-up is committed with this entry.
+- Pending: verify new dev CI, then execute the already authorized dev -> demo -> main sequence and verify each branch build. No production deployment or restart.
