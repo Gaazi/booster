@@ -127,3 +127,12 @@
 - Checks: workflow branch/runtime/permission invariants and diff check; build-pipeline regressions. Local PyYAML is unavailable; GitHub parsing and the exact-commit run are the formal YAML gate. Runtime code is unchanged from the 261 Python / 57 Node passing release gate.
 - Commits: d2d429b3ce12de4d54396662f00a5b10bfbd69e0 for reviewed fixes; this CI follow-up is committed with this entry.
 - Pending: verify new dev CI, then execute the already authorized dev -> demo -> main sequence and verify each branch build. No production deployment or restart.
+
+## 2026-10-25 10:28 IST - Authorized demo/main promotion completed
+
+- Agent/model: Codex (GPT-6); focused release verification, no new full-project review.
+- Reviewed/fixed commits: d2d429b3ce12de4d54396662f00a5b10bfbd69e0 (review checkpoint 447693df1cb87b45280eb8f67becda0a497c6fb0) and c8f6743bce15ebbed34275a5cccf65d232b7bd95 (read-only main build gate).
+- Done: dev -> demo merge c8ae544d9429071be992f841dc4d974a895c65b1, then demo -> main merge 4bb209fcf667c602a37cc21679897b7e1f0e17e5; both pushed immediately and record the instruction 'agar sab kuch thik hi to dev to demo after demo to main push karo'. Verified the promoted trees match and returned to dev.
+- Checks: complete dev run 40163457842, demo run 40163556974 and main run 40163667313 succeeded, including installed-package verification. Local release evidence: Python 261, Node 57; CI follow-up pipeline tests 34. Downloaded the main bundle to build/release-40163667313 and verified its manifest, exact commit and SHA-256 package checksums.
+- Commits: the two merge hashes above are on their remote branches. This final state/log record is a documentation-only dev commit and is not promoted again.
+- Pending: physical-device/network and production proof, real load-balancer/container-restart validation, local-lock crash recovery on the target host. Mixed journal implementations and network filesystems remain unsupported. No live deployment or restart performed; any new promotion/production action needs a new explicit request.
