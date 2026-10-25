@@ -13,13 +13,13 @@ import setup_plugin
 
 def plugin_folder(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Any:
     """Make a nested plugin directory containing spaces and an existing interpreter."""
-    root = tmp_path / "Main Project" / "go_fast"
+    root = tmp_path / "Main Project" / "booster"
     root.mkdir(parents=True)
-    (root / "pyproject.toml").write_text('[project]\nname="go_fast"')
+    (root / "pyproject.toml").write_text('[project]\nname="booster"')
     environment = root / ".venv"
     monkeypatch.setattr(setup_plugin, "ROOT", root)
     monkeypatch.setattr(setup_plugin, "ENVIRONMENT", environment)
-    monkeypatch.setattr(setup_plugin, "STAMP", root / ".go-fast-setup.json")
+    monkeypatch.setattr(setup_plugin, "STAMP", root / ".booster-setup.json")
     interpreter = setup_plugin.environment_python()
     interpreter.parent.mkdir(parents=True)
     interpreter.touch()
@@ -34,7 +34,7 @@ def test_setup_installs_once_and_reuses_environment(monkeypatch: pytest.MonkeyPa
     assert setup_plugin.setup_environment() == interpreter
     installs = [call.args[0] for call in runner.call_args_list if "install" in call.args[0]]
     assert len(installs) == 2
-    assert installs[-1][-1] == str(root)
+    assert installs[-1][-1] == f"{root}[server,brotli]"
     runner.reset_mock()
     setup_plugin.setup_environment()
     assert runner.call_count == 1 and "install" not in runner.call_args.args[0]

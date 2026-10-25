@@ -10,7 +10,7 @@ from django.conf import settings
 from django.http import HttpResponse, StreamingHttpResponse
 from django.test import RequestFactory
 
-from go_fast.django_support import DjangoRocketMiddleware
+from booster.django_support import DjangoRocketMiddleware
 
 if not settings.configured:
     settings.configure(DEFAULT_CHARSET="utf-8", ALLOWED_HOSTS=["testserver"])

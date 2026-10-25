@@ -3,13 +3,16 @@
 > **Universal Ultra-Fast Caching, Minification, and Compression Engine for Python, Node.js, and Web Apps.**
 
 [![Stable Release](https://img.shields.io/badge/release-v1.0.0%20(Stable)-brightgreen.svg)](https://github.com/Gaazi/booster/releases/tag/v1.0.0)
-[![Python Tests](https://img.shields.io/badge/python%20tests-109%20passed-brightgreen.svg)](https://github.com/Gaazi/booster)
-[![Node Tests](https://img.shields.io/badge/node%20tests-5%20passed-brightgreen.svg)](https://github.com/Gaazi/booster)
+[![Python Tests](https://img.shields.io/badge/python%20tests-261%20passed-brightgreen.svg)](https://github.com/Gaazi/booster)
+[![Node Tests](https://img.shields.io/badge/TypeScript%20tests-57%20passed-brightgreen.svg)](https://github.com/Gaazi/booster)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/)
 [![Node.js 18+](https://img.shields.io/badge/node-18+-green.svg)](https://nodejs.org/)
 
-`booster` is a zero-config, ultra-lightweight performance accelerator that brings **sub-millisecond (0.1ms - 2ms) response times** to APIs and web applications. It operates in pure process memory (RAM) with zero external databases or Redis requirements, making it drop-in compatible with every hosting environment from shared cPanel to enterprise cloud clusters.
+`booster` accelerates eligible public responses with bounded process-memory caching,
+optional minification and negotiated compression. It needs no external cache
+database or Redis. Performance depends on the application and hosting; verify
+middleware ordering, privacy and deployment compatibility before rollout.
 
 ---
 
@@ -25,11 +28,28 @@ We follow a strict 3-tier release pipeline to guarantee production stability:
 
 ---
 
+## 📖 Documentation & Architecture
+
+Before diving in, consult our architectural specifications and guides:
+- 🏛️ **[Comprehensive Features & System Architecture](docs/FEATURES_AND_ARCHITECTURE.md)** — In-depth technical breakdown of caching mechanics, HTTP RFC 9111 privacy boundaries, mutation invalidation, module map, and Mermaid request lifecycles.
+- 🧩 **[Plugin Recipe](docs/PLUGIN_RECIPE.md)** — Embed Booster as middleware inside any project: adapter file, registration order, route policy and rollout checks.
+- ✅ **[Conformance Checklist](docs/CONFORMANCE_CHECKLIST.md)** — Copy-paste privacy and correctness tests each host project runs before rollout.
+- 🛠️ **[Integration & Review Guide](docs/INTEGRATION.md)** — Safe website integration, framework setup (FastAPI, Django, Node.js), route policies, and middleware ordering.
+- 🎯 **[Workload Recommendations & Use Cases](docs/USE_CASES.md)** — Decision matrix for blogs, APIs, ecommerce, and dynamic sites.
+- 📦 **[Verified Compressed Builds](docs/BUILDS.md)** — Ready-to-install wheel/Node package downloads and verification.
+
+---
+
 ## ⚡ Superpowers
+
+Core caching and standard GZip require zero external dependencies and run on Python 3.10+.
+The standalone GUI dashboard and proxy gateway use the optional `server` extra (Python 3.11+);
+CDN HTTP calls and Brotli compression use the `cdn` and `brotli` extras.
+Pin a reviewed revision as described in the [Integration Guide](docs/INTEGRATION.md).
 
 1. **Microsecond In-Memory Cache (RAM):**
    - High-throughput LRU cache with monotonic TTL expiration.
-   - Microsecond reads (`~0.001ms`), up to **50x faster than Redis** with zero network hop latency.
+   - RAM reads avoid an external cache database and its network round trip.
    - Automatic cache invalidation on write mutations (`POST`, `PUT`, `DELETE`, `PATCH`).
 
 2. **Adaptive Brotli & Gzip Compression:**
@@ -37,7 +57,8 @@ We follow a strict 3-tier release pipeline to guarantee production stability:
    - Automatic client quality negotiation and streaming fallback.
 
 3. **On-the-fly Minification:**
-   - Instant whitespace, comment, and redundant character stripping for HTML, CSS, JavaScript, and JSON.
+   - Conservative JSON whitespace minification; HTML/CSS formatting is preserved.
+   - Frontend bundling and CSS/JavaScript minification remain build-tool responsibilities.
 
 4. **Universal Multi-CDN Integration:**
    - Automatically attaches `CDN-Cache-Control` and `Surrogate-Control` headers.
@@ -47,7 +68,7 @@ We follow a strict 3-tier release pipeline to guarantee production stability:
 5. **Smart Hybrid Update Engine:**
    - **On Dashboard Open**: Instantly checks for fresh releases on GitHub without stale data.
    - **Background Monthly Heartbeat**: Quiet periodic check for headless or background server deployments.
-   - **Auto-Patch**: Minor bug fixes auto-install silently without downtime.
+   - **Reviewed updates**: Auto-install is disabled by default; pinned consumers update after verification.
    - **Major Notification**: Visually displays upgrade banners in the dashboard and logs.
 
 ---
@@ -114,6 +135,85 @@ app.listen(3000, () => console.log('Listening on :3000'));
 
 ---
 
+### 4. Use Booster Inside Your Own Project (recommended for production)
+
+Install the reviewed revision from GitHub and let the command scaffold the
+adapter for you:
+
+```bash
+pip install "booster @ git+https://github.com/Gaazi/booster.git@<REVIEWED_COMMIT>"
+booster init --path . --include /static/css/ --include /static/js/ --exclude /media/
+```
+
+`booster init` writes a `booster_plugin.py` file into your project. Register it
+**before** your other middleware so Booster stays the innermost layer and the
+security, CORS, session and compression layers still run on every request:
+
+```python
+from booster_plugin import attach_booster
+
+app = FastAPI()
+attach_booster(app)      # Booster first: it stays the innermost layer
+setup_middlewares(app)   # security, CORS, session, compression after
+```
+
+Prefer a configuration file? Add `--config` and the command also writes
+`booster.json`, which `booster.SiteConfig.from_file()` reads:
+
+```python
+from booster import SiteConfig, attach_from_config
+
+engine = attach_from_config(app, SiteConfig.from_file("booster.json"))
+```
+
+Then run the [conformance checklist](docs/CONFORMANCE_CHECKLIST.md) in your own
+test suite and measure before/after numbers before rollout. Full guide:
+[Plugin Recipe](docs/PLUGIN_RECIPE.md).
+
+Node projects install the same engine from GitHub:
+
+```bash
+npm install github:Gaazi/booster-node#<REVIEWED_COMMIT>
+npx booster-node init --path . --include /static/css/ --exclude /media/ --config
+```
+
+```javascript
+import { buildMiddleware } from "./booster_plugin.ts";
+app.use(buildMiddleware());
+```
+
+The Node engine matches the Python one: the same route policy, the same JSON
+site configuration, the same operator snapshot (`middleware.status()`), the
+same bypass reasons and the same shared invalidation bus.
+
+---
+
+### 5. Measure Your Site
+
+```bash
+booster measure https://your-site.example/static/app.css --requests 20
+```
+
+It reports the status, the size, the cache headers, the p50/p95 timings and
+whether the engine could store that response, using the engine's own privacy
+rules. If the verdict is `response_not_public`, the `Vary` header explains
+why.
+
+### 6. Check the Installation
+
+```bash
+booster doctor
+```
+
+It reports the installed version, where the engine was imported from, the
+pinned commit the server really has, the console script path and the optional
+extras that are missing. A pinned commit is easy to believe and hard to prove:
+`pip` keeps an installed distribution whose name and version match, so this
+command is how a host confirms that the engine code on the server is the code
+it pinned.
+
+---
+
 ## 🌐 Live Hosting Deployment (Cloud, VPS & cPanel)
 
 ### A. cPanel / Shared Hosting (No Root / No Redis Needed!)
@@ -154,14 +254,14 @@ If you want to accelerate an existing website without editing code:
 
 ## 🧪 Comprehensive Verification & Tests
 
-### Run Python Test Suite (109 Tests):
+### Run Python Test Suite:
 ```bash
 pytest
 ```
 
-### Run Node.js Test Suite (5 Test Suites):
+### Run Node.js Test Suite (Native TypeScript):
 ```bash
-node booster-node/test/test.js
+node --test booster-node/test/test-ts.ts
 ```
 
 ---

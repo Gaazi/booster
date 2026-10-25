@@ -4,8 +4,15 @@ import pytest
 from unittest.mock import AsyncMock, patch
 from starlette.testclient import TestClient
 
+from booster import __version__
 from booster.updater import parse_version, classify_update, check_for_updates
 from booster.server import app
+
+
+def next_patch_release() -> str:
+    """Return a release tag that is newer than the current engine version."""
+    major, minor, patch = parse_version(__version__)
+    return f"v{major}.{minor}.{patch + 1}"
 
 
 def test_parse_version() -> None:
@@ -26,13 +33,26 @@ def test_classify_update() -> None:
 
 
 @pytest.mark.anyio
-async def test_check_for_updates_patch() -> None:
+async def test_default_update_check_does_not_install(monkeypatch) -> None:
+    """A release check never changes the environment without explicit opt-in."""
+    monkeypatch.delenv("BOOSTER_AUTO_UPDATE", raising=False)
+    release = {"tag_name": next_patch_release()}
+    with patch("booster.updater.fetch_latest_release", new_callable=AsyncMock, return_value=release):
+        with patch("booster.updater.apply_patch_update") as install:
+            result = await check_for_updates(force=True)
+    assert result["update_type"] == "patch" and result["auto_applied"] is False
+    install.assert_not_called()
+
+
+@pytest.mark.anyio
+async def test_check_for_updates_patch(monkeypatch) -> None:
     """Verify patch update detection and auto-apply formatting."""
     mock_release = {
-        "tag_name": "v1.0.1",
-        "name": "v1.0.1 Bugfix",
-        "html_url": "https://github.com/Gaazi/booster/releases/tag/v1.0.1",
+        "tag_name": next_patch_release(),
+        "name": "next patch release",
+        "html_url": "https://github.com/Gaazi/booster/releases/tag/next-patch",
     }
+    monkeypatch.setenv("BOOSTER_AUTO_UPDATE", "true")
     with patch("booster.updater.fetch_latest_release", new_callable=AsyncMock) as mock_fetch:
         mock_fetch.return_value = mock_release
         with patch("booster.updater.apply_patch_update", return_value=True):
@@ -61,14 +81,15 @@ async def test_check_for_updates_major() -> None:
 def test_server_update_endpoints() -> None:
     """Verify /api/check-update and /api/apply-update endpoints."""
     client = TestClient(app, base_url="http://127.0.0.1:5050", client=("127.0.0.1", 12345))
-    headers = {"X-Go-Fast-Admin": "1"}
+    headers = {"X-Booster-Admin": "1"}
 
-    res = client.get("/api/check-update", headers=headers)
-    assert res.status_code == 200
+    with patch("booster.updater.fetch_latest_release", new_callable=AsyncMock, return_value={"tag_name": "v1.0.1"}):
+        res = client.get("/api/check-update", headers=headers)
+        assert res.status_code == 200
 
-    data = res.json()
-    assert "current_version" in data
-    assert "update_type" in data
+        data = res.json()
+        assert "current_version" in data
+        assert "update_type" in data
 
     with patch("booster.updater.apply_patch_update", return_value=True):
         res_apply = client.post("/api/apply-update", headers=headers)

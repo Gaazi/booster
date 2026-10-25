@@ -1,7 +1,7 @@
 """Unit tests for FastMemoryCache."""
 
 import time
-from go_fast.cache import FastMemoryCache
+from booster.cache import FastMemoryCache
 
 
 def test_cache_set_and_get() -> None:

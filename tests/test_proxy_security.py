@@ -11,7 +11,7 @@ import httpx
 from starlette.requests import Request
 from starlette.responses import StreamingResponse
 
-from go_fast.proxy import SpeedProxyServer
+from booster.proxy import SpeedProxyServer
 
 
 class ChunkStream(httpx.AsyncByteStream):
@@ -122,7 +122,7 @@ def test_client_does_not_retain_cookies_or_environment_proxies() -> None:
             return original_client(**kwargs, transport=httpx.MockTransport(lambda req:
                 httpx.Response(200, stream=ChunkStream([b"private"]), headers={"set-cookie": "secret=one"})))
         proxy = SpeedProxyServer("http://origin.test")
-        with patch("go_fast.proxy.httpx.AsyncClient", side_effect=client_factory):
+        with patch("booster.proxy.httpx.AsyncClient", side_effect=client_factory):
             await proxy.handle_request(request())
             assert len(proxy.get_client().cookies) == 0
             await proxy.close()

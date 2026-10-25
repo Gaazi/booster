@@ -1,0 +1,27 @@
+# Agent Ignore: Files and directories that AI agents and tools must NOT scan or index
+
+# Virtual environments & dependencies
+.venv/
+venv/
+node_modules/
+.trash/
+
+# Build and packaging output
+build/
+dist/
+*.egg-info/
+booster.egg-info/
+
+# Python bytecode & cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.coverage
+
+# Git internals and logs
+.git/
+*.log
+*.tmp
+*.bak

@@ -85,6 +85,6 @@ class LocalAccessGuard:
         if headers.get("sec-fetch-site", "none") not in {"same-origin", "none"}:
             return "Foreign browser requests cannot access the local plugin"
         if self.management and scope.get("method") not in {"GET", "HEAD", "OPTIONS"}:
-            if headers.get("x-go-fast-admin") != "1":
+            if headers.get("x-booster-admin") != "1":
                 return "Management writes require the dashboard request header"
         return None

@@ -9,6 +9,7 @@ __pycache__/
 dist/
 build/
 
-docs/
+docs/index.html
 .venv/
-.go-fast-setup.json
+node_modules/
+.booster-setup.json

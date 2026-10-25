@@ -57,7 +57,7 @@ async function applyTarget() {
   try {
     const res = await fetch("/api/set-target", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "X-Go-Fast-Admin": "1" },
+      headers: { "Content-Type": "application/json", "X-Booster-Admin": "1" },
       body: JSON.stringify({ url: url })
     });
     const data = await res.json();
@@ -91,7 +91,7 @@ async function autoDetect() {
 
 async function clearCache() {
   try {
-    const res = await fetch("/api/clear-cache", { method: "POST", headers: { "X-Go-Fast-Admin": "1" } });
+    const res = await fetch("/api/clear-cache", { method: "POST", headers: { "X-Booster-Admin": "1" } });
     if (!res.ok) throw new Error("Cache clear failed");
     alert("🗑️ In-memory cache cleared successfully!");
     fetchStats();
@@ -132,7 +132,7 @@ async function applyUpdate() {
   try {
     const res = await fetch("/api/apply-update", {
       method: "POST",
-      headers: { "X-Go-Fast-Admin": "1" }
+      headers: { "X-Booster-Admin": "1" }
     });
     const data = await res.json();
     if (data.success) {

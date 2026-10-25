@@ -1,4 +1,4 @@
-"""Tests verifying that booster package exports match go_fast and work identically."""
+"""Tests verifying the single Booster package and its public integration API."""
 
 from __future__ import annotations
 import inspect
@@ -7,11 +7,10 @@ from fastapi.responses import HTMLResponse
 from starlette.testclient import TestClient
 
 import booster
-import go_fast
 
 
-def test_top_level_exports_parity() -> None:
-    """Verify that booster and go_fast expose identical public symbols."""
+def test_top_level_exports() -> None:
+    """Verify the one public package exposes its documented integration API."""
     expected_exports = {
         "RocketBooster",
         "FastMemoryCache",
@@ -27,9 +26,7 @@ def test_top_level_exports_parity() -> None:
 
     for name in expected_exports:
         assert hasattr(booster, name), f"booster missing {name}"
-        assert hasattr(go_fast, name), f"go_fast missing {name}"
     assert booster.attach == booster.RocketBooster.attach
-    assert go_fast.attach == go_fast.RocketBooster.attach
 
 
 def test_booster_attach_helper() -> None:

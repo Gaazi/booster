@@ -33,11 +33,18 @@ export function isCompressible(
 }
 
 export function chooseEncoding(acceptEncoding: string = ""): string | null {
-  const header = acceptEncoding.toLowerCase();
-  if (header.includes("br")) return "br";
-  if (header.includes("gzip")) return "gzip";
-  if (header.includes("deflate")) return "deflate";
-  return null;
+  const qualities = new Map<string, number>();
+  for (const item of acceptEncoding.toLowerCase().split(",")) {
+    const [name, ...parameters] = item.trim().split(";");
+    const quality = parameters.find(value => value.trim().startsWith("q="));
+    const value = quality ? Number(quality.trim().slice(2)) : 1;
+    qualities.set(name.trim(), Number.isFinite(value) && value >= 0 && value <= 1 ? value : 0);
+  }
+  const weight = (name: string): number => qualities.get(name) ?? qualities.get("*") ?? 0;
+  const candidates = ["br", "gzip", "deflate"].sort((a, b) => weight(b) - weight(a));
+  const selected = candidates[0];
+  const identity = qualities.get("identity") ?? 0;
+  return weight(selected) > 0 && weight(selected) >= identity ? selected : null;
 }
 
 export function compressBuffer(buffer: Buffer, encoding: string): Buffer {

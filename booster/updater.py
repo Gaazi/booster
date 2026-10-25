@@ -77,8 +77,7 @@ def apply_patch_update() -> bool:
 
 
 async def check_for_updates(force: bool = False, repo: str = "Gaazi/booster") -> Dict[str, Any]:
-    """Check for available updates with caching and auto-patch application."""
-    global _cached_update_info, _last_check_timestamp
+    """Check releases without changing installed code unless explicitly opted in."""
     now = time.time()
 
     if not force and _cached_update_info and (now - _last_check_timestamp < CACHE_TTL_SECONDS):
@@ -88,15 +87,13 @@ async def check_for_updates(force: bool = False, repo: str = "Gaazi/booster") ->
     release = await fetch_latest_release(repo)
     if not release or "tag_name" not in release:
         result = {"current_version": current, "latest_version": current, "update_type": "none"}
-        _cached_update_info = result
-        _last_check_timestamp = now
-        return result
+        return _remember_update(result, now)
 
     latest = release.get("tag_name", current)
     update_type = classify_update(current, latest)
     auto_patched = False
 
-    if update_type == "patch" and os.getenv("BOOSTER_AUTO_UPDATE", "true").lower() in ("1", "true", "yes"):
+    if update_type == "patch" and os.getenv("BOOSTER_AUTO_UPDATE", "false").lower() in ("1", "true", "yes"):
         auto_patched = apply_patch_update()
 
     result = {
@@ -108,8 +105,13 @@ async def check_for_updates(force: bool = False, repo: str = "Gaazi/booster") ->
         "auto_applied": auto_patched,
         "message": _build_update_message(current, latest, update_type, auto_patched),
     }
-    _cached_update_info = result
-    _last_check_timestamp = now
+    return _remember_update(result, now)
+
+
+def _remember_update(result: Dict[str, Any], timestamp: float) -> Dict[str, Any]:
+    """Save one checked result without duplicating cache bookkeeping."""
+    global _cached_update_info, _last_check_timestamp
+    _cached_update_info, _last_check_timestamp = result, timestamp
     return result
 
 

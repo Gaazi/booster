@@ -156,3 +156,9 @@ class FastMemoryCache:
     def count(self) -> int:
         """Return count of active entries."""
         return len(self._store)
+
+    @synchronized
+    def get_stats(self) -> dict[str, int]:
+        """Expose bounded resident memory counters without cache keys or payloads."""
+        return {"items": len(self._store), "bytes": self._bytes,
+                "max_items": self.max_items, "max_bytes": self.max_bytes}

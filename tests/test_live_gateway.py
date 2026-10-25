@@ -78,7 +78,7 @@ def test_live_plugin_from_another_working_directory(origin_server: str, tmp_path
             assert first.json() == second.json() == {"path": "/items?q=2"}
             assert first.headers["etag"] == second.headers["etag"]
             assert client.post("http://127.0.0.1:5050/api/clear-cache", headers={
-                "Origin": "http://127.0.0.1:5051", "X-Go-Fast-Admin": "1"}).status_code == 403
+                "Origin": "http://127.0.0.1:5051", "X-Booster-Admin": "1"}).status_code == 403
             assert client.get("http://127.0.0.1:5051/api/stats").json() == {"path": "/api/stats"}
     finally:
         process.terminate()

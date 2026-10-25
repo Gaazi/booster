@@ -1,6 +1,6 @@
 @echo off
 setlocal
-title go_fast - Local Plugin
+title booster - Local Plugin
 cd /d "%~dp0"
 python --version >nul 2>&1
 if errorlevel 1 (
