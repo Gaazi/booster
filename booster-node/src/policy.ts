@@ -5,9 +5,10 @@ import type { CacheHeaders } from "./cache.ts";
 
 export const MAX_BODY_BYTES = 3_000_000;
 const FORBIDDEN = ["private", "no-store", "no-cache", "no-transform"];
+type CacheResponse = Pick<ServerResponse, "statusCode" | "getHeader" | "hasHeader">;
 
 /** Retain outer host privacy decisions on hits as well as misses. */
-export function responseBlocksCache(res: ServerResponse, allowedVary: string[] = []): boolean {
+export function responseBlocksCache(res: CacheResponse, allowedVary: string[] = []): boolean {
   const controls = ["cache-control", "cdn-cache-control", "surrogate-control"]
     .map(name => directives(String(res.getHeader(name) || "")));
   if (controls.some(control => FORBIDDEN.some(name => control.has(name)))) return true;
@@ -16,7 +17,7 @@ export function responseBlocksCache(res: ServerResponse, allowedVary: string[] =
 }
 
 /** Accept only the negotiation fields the site declared it may ignore. */
-function varyAccepted(res: ServerResponse, allowedVary: string[]): boolean {
+function varyAccepted(res: CacheResponse, allowedVary: string[]): boolean {
   const accepted = new Set(["accept-encoding", ...allowedVary.map(field => field.toLowerCase())]);
   const vary = String(res.getHeader("vary") || "").split(",").map(value => value.trim().toLowerCase()).filter(Boolean);
   return vary.every(field => accepted.has(field));
@@ -43,7 +44,7 @@ export function requestAllowed(req: BoosterRequest): boolean {
 }
 
 /** Include already-aged origin responses when computing their remaining lifetime. */
-export function originAge(res: ServerResponse): number {
+export function originAge(res: CacheResponse): number {
   const value = String(res.getHeader("age") ?? "0");
   if (!/^\d+$/.test(value)) return Infinity;
   const date = res.getHeader("date");
@@ -52,7 +53,7 @@ export function originAge(res: ServerResponse): number {
 }
 
 /** Bound RAM TTL by all origin freshness policies and prohibit private variants. */
-export function responseTTL(res: ServerResponse, configured: number, allowedVary: string[] = []): number {
+export function responseTTL(res: CacheResponse, configured: number, allowedVary: string[] = []): number {
   const controls = ["cache-control", "cdn-cache-control", "surrogate-control"]
     .map(name => directives(String(res.getHeader(name) || "")));
   if (controls[0].get("public") !== "" || !Number.isFinite(originAge(res))
@@ -103,27 +104,13 @@ export interface CacheVerdict {
 export function cacheVerdict(headers: Record<string, string | undefined>, status: number,
                              configuredTtl = 300, allowedVary: string[] = []): CacheVerdict {
   if (status !== 200) return { cacheable: false, reason: "status_not_cacheable", ttlSeconds: 0 };
-  const controls = ["cache-control", "cdn-cache-control", "surrogate-control"]
-    .map(name => directives(String(headers[name] ?? "")));
-  if (controls.some(control => FORBIDDEN.some(name => control.has(name)))) {
-    return { cacheable: false, reason: "response_not_public", ttlSeconds: 0 };
-  }
-  if (!controls[0].has("public")) return { cacheable: false, reason: "response_not_public", ttlSeconds: 0 };
-  const vary = String(headers["vary"] ?? "").split(",").map(value => value.trim().toLowerCase()).filter(Boolean);
-  const accepted = new Set(["accept-encoding", ...allowedVary.map(field => field.toLowerCase())]);
-  if (!vary.every(field => accepted.has(field))) {
-    return { cacheable: false, reason: "response_not_public", ttlSeconds: 0 };
-  }
-  const age = Number(headers["age"] ?? "0");
-  let ttl = configuredTtl;
-  for (const control of controls) {
-    const key = control.has("s-maxage") ? "s-maxage" : "max-age";
-    if (!control.has(key)) continue;
-    const match = /^(?:"(\d+)"|(\d+))$/.exec(control.get(key)!);
-    if (!match) return { cacheable: false, reason: "response_not_public", ttlSeconds: 0 };
-    ttl = Math.min(ttl, Number(match[1] ?? match[2]) - (Number.isFinite(age) ? age : 0));
-  }
-  return { cacheable: ttl > 0, reason: ttl > 0 ? "stored" : "response_not_public", ttlSeconds: Math.max(0, ttl) };
+  const response: CacheResponse = {
+    statusCode: status,
+    getHeader: name => headers[name.toLowerCase()],
+    hasHeader: name => headers[name.toLowerCase()] !== undefined,
+  };
+  const ttl = responseTTL(response, configuredTtl, allowedVary);
+  return {cacheable: ttl > 0, reason: ttl > 0 ? "stored" : "response_not_public", ttlSeconds: ttl};
 }
 
 /** Save original end-to-end headers without connection-specific transport fields. */

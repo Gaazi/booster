@@ -149,11 +149,13 @@ def test_authorized_promotion_pushes_immediately_after_merge(tmp_path: Path) -> 
         with patch.object(promote_demo, "check_checkout", return_value=SHA):
             with patch.object(promote_demo, "verified_download", return_value=tmp_path / "build.zip"):
                 with patch.object(promote_demo, "prepare_demo"):
-                    with patch.object(promote_demo, "command", side_effect=["", "", f"{SHA}\trefs/heads/demo"]) as command:
-                        promote_demo.promote(tmp_path, authorized=True)
+                    results = ["", "", f"{SHA}\trefs/heads/demo", SHA, "", ""]
+                    with patch.object(promote_demo, "command", side_effect=results) as command:
+                        promote_demo.promote(tmp_path, authorized=True, authorization_note="merge dev to demo")
     calls = [call.args[1] for call in command.call_args_list]
     assert calls[0][2] == "merge"
     assert calls[1] == ["git", "push", "origin", "demo"]
+    assert calls[0][-2:] == ["--authorization-note", "merge dev to demo"]
 
 
 def test_changed_dev_cannot_promote_previous_build(tmp_path: Path) -> None:
@@ -162,7 +164,7 @@ def test_changed_dev_cannot_promote_previous_build(tmp_path: Path) -> None:
         with patch.object(promote_demo, "verified_download", return_value=tmp_path / "build.zip"):
             with patch.object(promote_demo, "command") as command:
                 with pytest.raises(ValueError, match="changed"):
-                    promote_demo.promote(tmp_path, authorized=True)
+                    promote_demo.promote(tmp_path, authorized=True, authorization_note="merge dev to demo")
     command.assert_not_called()
 
 

@@ -2,7 +2,8 @@
 
 from typing import Any, Callable
 
-from booster.http_policy import request_cacheable, response_cacheable, response_ttl, is_static_asset
+from booster.http_policy import (cached_response_age, request_cacheable, response_cacheable,
+                                 response_ttl, is_static_asset)
 from booster.cache import FastMemoryCache
 from booster.compressor import ResponseCompressor
 from booster.minifier import FastMinifier
@@ -53,6 +54,7 @@ class DjangoRocketMiddleware:
                 response[name.decode("latin1")] = value.decode("latin1")
         response["Content-Length"] = str(len(cached.body))
         response["ETag"] = cached.etag
+        response["Age"] = cached_response_age(cached.headers, cached.created_at)
         return response
 
     def _store_response(self, path: str, key: str, response: Any, generation: int,

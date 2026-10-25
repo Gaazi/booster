@@ -278,3 +278,4 @@ test("TypeScript native - booster middleware initialization with compressDynamic
   assert.strictEqual(typeof middleware, "function");
   assert.strictEqual(isStaticAsset("/static/theme.css"), true);
 });
+import "./review-regressions.ts";

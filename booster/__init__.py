@@ -24,7 +24,7 @@ _OPTIONAL_EXPORTS = {
     "SpeedProxyServer": ("booster.proxy", "server"),
 }
 
-__version__ = "1.0.3.dev1"
+__version__ = "1.0.4.dev1"
 
 # Direct top-level helper for maximum simplicity
 attach = RocketBooster.attach

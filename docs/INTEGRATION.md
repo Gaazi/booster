@@ -182,15 +182,27 @@ engine = booster.attach(app, invalidation_bus=FileInvalidationBus("/var/run/boos
 ```
 
 The worker that handled the write publishes the notice; every other worker
-applies it on its next request. The file is truncated when it grows past its
-size limit, and a reader that notices the truncation applies a full clear,
-because that is the only safe reading of a lost notice. The bus is best
-effort: a worker that never receives a request keeps its old entries until
-they expire. `tests/test_shared_invalidation.py` runs two real processes and
+applies it on its next request. Python and Node use the same generation header,
+JSON record format and bounded local directory lock. Rotation changes the
+generation, so even a slow reader that sees an already-refilled file clears its
+cache. An invalidation also retires older in-flight Node capture contexts.
+The byte cap has a minimum metadata footprint of 34 bytes. Idle workers apply
+notices before their next read; their resident entries may remain until then.
+`tests/test_shared_invalidation.py` runs two real processes and
 proves the peer returns the fresh body after the other worker wrote, and that
 the documented process-local behaviour is unchanged when no bus is configured.
 `engine.get_status()["configuration"]["invalidation"]` reports `shared` or
 `process`.
+
+Keep the notice file in a trusted directory outside public static roots. Upgrade
+all workers together: the generation/JSON journal replaces the earlier plain-text
+format, and mixed old/new bus implementations are unsupported. The file bus is
+for one local filesystem, not a network filesystem or distributed cache service.
+If a publisher crashes while holding `notices.log.lock`, calls fail closed after
+five seconds. An operator must stop the participating workers, verify that the
+lock has no live owner, remove that empty lock directory and restart the workers;
+Booster never steals a lock based on its age. Do not roll out mutable caching
+without verifying these failure and recovery conditions on the target host.
 
 For the lightest deployment, use the static-only `CachePolicy` example above.
 Exclude mutable catalog, price, stock, account and live-status routes even when

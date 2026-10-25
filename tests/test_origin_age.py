@@ -49,7 +49,7 @@ def test_response_age_is_read() -> None:
     """The Age header must be read as seconds."""
     assert response_age({"age": "81"}) == 81.0
     assert response_age({}) == 0.0
-    assert response_age({"age": "invalid"}) == 0.0
+    assert response_age({"age": "invalid"}) == float("inf")
 
 
 def test_remaining_freshness_bounds_the_retention() -> None:

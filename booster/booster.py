@@ -4,7 +4,7 @@ import time
 from typing import Any, Callable
 
 from booster.asgi_response import ASGIResponseOptimizer, parse_headers, representation_headers
-from booster.http_policy import request_cacheable
+from booster.http_policy import cached_response_age, request_cacheable
 from booster.cache import FastMemoryCache
 from booster.compressor import ResponseCompressor
 from booster.minifier import FastMinifier
@@ -163,7 +163,8 @@ class RocketBooster:
             if self.enable_compression:
                 body, encoding = self.compressor.compress(body, cached.content_type,
                                                           headers.get("accept-encoding", ""))
-            stored_headers = cached.headers + [(b"age", self._age_value(cached))]
+            stored_headers = [(key, value) for key, value in cached.headers if key.lower() != b"age"]
+            stored_headers.append((b"age", self._age_value(cached)))
             await self._send_cached(send, cached.status_code, cached.content_type, body,
                                     cached.etag, encoding, stored_headers)
             size, status = len(body), cached.status_code
@@ -176,7 +177,7 @@ class RocketBooster:
         """Retain origin cache and security headers on conditional cache hits."""
         headers = representation_headers(cached.headers, b"", cached.etag, None)
         headers = [(key, value) for key, value in headers if key.lower() not in
-                   {b"content-length", b"content-type"}]
+                   {b"content-length", b"content-type", b"age"}]
         headers.append((b"age", self._age_value(cached)))
         await send({"type": "http.response.start", "status": 304, "headers": headers})
         await send({"type": "http.response.body", "body": b""})
@@ -184,14 +185,7 @@ class RocketBooster:
     @staticmethod
     def _age_value(cached: Any) -> bytes:
         """Report the origin age plus the time the entry spent in this cache."""
-        origin = 0.0
-        for name, value in cached.headers:
-            if name.lower() == b"age":
-                try:
-                    origin = max(0.0, float(value.decode("latin1").strip()))
-                except ValueError:
-                    origin = 0.0
-        return str(int(origin + time.monotonic() - cached.created_at)).encode("ascii")
+        return cached_response_age(cached.headers, cached.created_at).encode("ascii")
 
     async def _send_cached(self, send: Callable, status: int, content_type: str, body: bytes,
                            etag: str, encoding: str | None,

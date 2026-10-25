@@ -22,7 +22,7 @@ export interface SiteConfig {
 
 /** Validate a list of absolute route prefixes. */
 function paths(value: unknown, name: string): string[] | undefined {
-  if (value === undefined || value === null) return undefined;
+  if (value === undefined || (value === null && name === "includePaths")) return undefined;
   if (!Array.isArray(value)) throw new Error(`${name} must be a list of absolute URL prefixes`);
   for (const prefix of value) {
     if (typeof prefix !== "string" || !prefix.startsWith("/")) {
@@ -50,17 +50,28 @@ export function siteConfigFrom(document: Record<string, unknown>): SiteConfig {
   const config: SiteConfig = {};
   if (includePaths !== undefined) config.includePaths = includePaths;
   if (excludePaths !== undefined) config.excludePaths = excludePaths;
-  const ttl = positive(document.ttl, "ttl");
-  if (ttl !== undefined) config.ttl = ttl;
-  const maxItems = positive(document.maxItems, "maxItems");
-  if (maxItems !== undefined) config.maxItems = maxItems;
-  const maxCacheBytes = positive(document.maxCacheBytes, "maxCacheBytes");
-  if (maxCacheBytes !== undefined) config.maxCacheBytes = maxCacheBytes;
-  const minCompressSize = positive(document.minCompressSize, "minCompressSize");
-  if (minCompressSize !== undefined) config.minCompressSize = minCompressSize;
-  if (typeof document.compressDynamic === "boolean") config.compressDynamic = document.compressDynamic;
-  if (typeof document.invalidationFile === "string") config.invalidationFile = document.invalidationFile;
+  for (const key of ["ttl", "maxItems", "maxCacheBytes", "minCompressSize"] as const) {
+    const value = positive(document[key], key);
+    if (value === undefined) continue;
+    if (key !== "ttl" && !Number.isSafeInteger(value)) throw new Error(`${key} must be a positive integer`);
+    config[key] = value;
+  }
+  optionalSettings(document, config);
   return config;
+}
+
+/** Reject malformed optional settings instead of silently disabling a shared bus. */
+function optionalSettings(document: Record<string, unknown>, config: SiteConfig): void {
+  if (document.compressDynamic !== undefined) {
+    if (typeof document.compressDynamic !== "boolean") throw new Error("compressDynamic must be a boolean");
+    config.compressDynamic = document.compressDynamic;
+  }
+  const path = document.invalidationFile;
+  if (path === undefined || path === null) return;
+  if (typeof path !== "string" || !path.trim() || path.includes("\0")) {
+    throw new Error("invalidationFile must be a nonempty path string or null");
+  }
+  config.invalidationFile = path;
 }
 
 /** Read a configuration from one JSON file. */

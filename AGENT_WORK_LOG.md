@@ -110,3 +110,12 @@
 - Constraints kept: the new module uses only the standard library, so core stays dependency free and the standalone server path is unchanged; no engine behaviour change.
 - Pending: shared invalidation between workers, Node parity, physical-phone verification, server-side install (operator action).
 - Commits: see `git log` on `dev`. Branch policy: `dev` only, no `main`/`demo` merge, no deployment.
+
+## 2026-10-25 10:20 IST - Focused review and release gate
+
+- Agent/model: Codex (GPT-6).
+- Scope: focused review of new work after 8655226 through exact checkpoint 447693df1cb87b45280eb8f67becda0a497c6fb0; not a full-project review. Resume future review after this checkpoint plus the fixes in this entry's commit.
+- Done: reproduced and fixed peer generation races, lost rotated notices, cross-runtime journal synchronization, local-bus crashes, dropped scaffold configuration, malformed configuration, invalid/duplicate/stale Age handling, unsafe generated literals and the real Node measure CLI/default/verdict. Updated promotion compatibility and package versions. Details: docs/REVIEW_2026-10-25.md.
+- Checks: local release gate Python 261 passed and Node 57 passed; actual concurrent Python/Node publishers, actual CLI process, TypeScript build/public types, Python syntax, changed-file audit, pip check and npm audit (0 findings). Prior green CI at reviewed checkpoint was not sufficient: new failing regressions proved defects before fixes.
+- Commits: reviewed HEAD 447693df1cb87b45280eb8f67becda0a497c6fb0; fixes and this entry are committed together on dev (resolve exact commit with git log -- docs/REVIEW_2026-10-25.md).
+- Pending: exact-commit CI/package verification, then user-authorized dev -> demo -> main promotions. Authorization: "agar sab kuch thik hi to dev to demo after demo to main push karo". No live deployment/restart authorized. Real-device/network and production proof remain pending; mixed journal versions are unsupported.

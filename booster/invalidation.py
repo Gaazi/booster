@@ -7,8 +7,12 @@ handled the write publishes a notice, and every other worker applies it before
 it serves the next request.
 """
 
+import json
 from pathlib import Path
 from typing import List, Protocol
+from uuid import uuid4
+
+from booster.file_bus_lock import file_bus_lock
 
 FULL_CLEAR = "*"
 
@@ -31,39 +35,61 @@ class LocalInvalidationBus:
 
     def drain(self) -> List[str]:
         """Return no notices."""
+        return []
 
 
 class FileInvalidationBus:
     """Exchange notices through one shared file, for workers on the same host.
 
-    Every worker keeps its own read position, so one worker never consumes
-    another worker's notice. The file is truncated when it grows past the size
-    limit; a reader that notices the truncation applies a full clear, because
-    that is the only safe interpretation of a lost notice.
+    A generation header detects rotation even after the file has refilled.
+    Python and Node serialize reads/writes with the same local directory lock.
+    Rotation discards notices and forces a full clear in every existing reader.
     """
 
     def __init__(self, path: Path, max_bytes: int = 1_000_000) -> None:
-        """Open the shared notice file for reading and later appending."""
-        self.path = Path(path)
+        """Initialize one independent cursor over the bounded shared journal."""
+        if isinstance(max_bytes, bool) or not isinstance(max_bytes, int) or max_bytes <= 0:
+            raise ValueError("max_bytes must be a positive integer")
+        self.path = Path(path).resolve()
         self.max_bytes = max_bytes
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        self.path.touch(exist_ok=True)
-        self._reader = self.path.open("r", encoding="utf-8")
+        self._lock = Path(str(self.path) + ".lock")
+        with file_bus_lock(self._lock):
+            self._epoch = self._header()
+        self._position = len(self._epoch)
+
+    def _header(self) -> bytes:
+        """Initialize or migrate the journal to the shared generation protocol."""
+        if self.path.exists():
+            with self.path.open("rb") as reader:
+                header = reader.readline(35)
+            if len(header) == 34 and header.startswith(b"#") and header.endswith(b"\n"):
+                return header
+        header = b"#" + uuid4().hex.encode("ascii") + b"\n"
+        self.path.write_bytes(header)
+        return header
 
     def publish(self, prefix: str) -> None:
-        """Append one notice for the other workers."""
-        with self.path.open("a", encoding="utf-8") as writer:
-            writer.write(prefix + "\n")
-        self._truncate_if_large()
+        """Append a complete notice or rotate to a full-clear generation."""
+        record = (json.dumps(prefix, ensure_ascii=False) + "\n").encode("utf-8")
+        with file_bus_lock(self._lock):
+            self._header()
+            if self.path.stat().st_size + len(record) > self.max_bytes:
+                self.path.write_bytes(b"#" + uuid4().hex.encode("ascii") + b"\n")
+            else:
+                with self.path.open("ab") as writer:
+                    writer.write(record)
 
     def drain(self) -> List[str]:
-        """Read the notices written since the last drain."""
-        if self._reader.tell() > self.path.stat().st_size:
-            self._reader.seek(0)
-            return [FULL_CLEAR]
-        return [line.strip() for line in self._reader.read().splitlines() if line.strip()]
-
-    def _truncate_if_large(self) -> None:
-        """Truncate the notice file so it cannot grow without bound."""
-        if self.path.stat().st_size > self.max_bytes:
-            self.path.write_text("", encoding="utf-8")
+        """Read complete records, treating any generation change as a full clear."""
+        with file_bus_lock(self._lock):
+            epoch = self._header()
+            if epoch != self._epoch or self._position > self.path.stat().st_size:
+                self._epoch = epoch
+                self._position = self.path.stat().st_size
+                return [FULL_CLEAR]
+            with self.path.open("rb") as reader:
+                reader.seek(self._position)
+                records = reader.read().decode("utf-8").splitlines()
+                self._position = reader.tell()
+            return [json.loads(record) for record in records if record]

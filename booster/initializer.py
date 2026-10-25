@@ -73,7 +73,7 @@ def attach_booster(app: Any) -> Optional[Any]:
 def render_paths(paths: Iterable[str]) -> str:
     """Render a path tuple for the generated module."""
     values = list(paths)
-    body = ", ".join(f'"{path}"' for path in values)
+    body = ", ".join(json.dumps(path) for path in values)
     return "(" + body + ("," if len(values) == 1 else "") + ")"
 
 

@@ -1,5 +1,8 @@
 """Conservative shared cache and HTTP header policy."""
 
+import math
+import time
+
 HOP_HEADERS = {"host", "connection", "keep-alive", "proxy-authenticate",
                "proxy-authorization", "te", "trailer", "transfer-encoding", "upgrade"}
 
@@ -36,10 +39,15 @@ def request_cacheable(headers: dict[str, str], is_static: bool = False) -> bool:
 
 def response_age(headers: dict[str, str]) -> float:
     """Read the Age header as the number of seconds the response is already old."""
-    try:
-        return max(0.0, float(headers.get("age", "0").strip()))
-    except ValueError:
-        return 0.0
+    value = headers.get("age", "0").strip()
+    return float(value) if value.isascii() and value.isdigit() else math.inf
+
+
+def cached_response_age(headers: list[tuple[bytes, bytes]], created_at: float) -> str:
+    """Advance the origin age by monotonic resident time for every adapter."""
+    values = [value.decode("latin1") for key, value in headers if key.lower() == b"age"]
+    age = response_age({"age": ",".join(values)}) if values else 0
+    return str(int(age + max(0, time.monotonic() - created_at)))
 
 
 def response_cacheable(headers: dict[str, str], is_static: bool = False,
@@ -68,13 +76,15 @@ def response_ttl(headers: dict[str, str], default: float) -> float:
     """Bound static cache retention by the shortest declared freshness limit."""
     limits = [default]
     age = response_age(headers)
+    if not math.isfinite(age):
+        return 0
     for part in headers.get("cache-control", "").split(","):
         name, separator, value = part.strip().partition("=")
         if name.lower() in {"max-age", "s-maxage"}:
             if not separator or not value.strip('"').isdigit():
                 return 0
             limits.append(float(value.strip('"')) - age)
-    return min(limits)
+    return max(0, min(limits))
 
 
 def filtered_headers(headers: list[tuple[bytes, bytes]]) -> list[tuple[bytes, bytes]]:

@@ -49,6 +49,7 @@ function trackMutation(engine: EngineState, ctx: ResponseContext): void {
 /** Apply the invalidation notices published by the other workers. */
 function applyPendingInvalidations(engine: EngineState): void {
   for (const notice of engine.bus.drain()) {
+    engine.generation++;
     if (notice === FULL_CLEAR) engine.cache.clear();
     else engine.cache.invalidatePrefix(notice);
   }

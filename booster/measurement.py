@@ -9,6 +9,7 @@ phone without installing the extras.
 import statistics
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from typing import Any, Dict, List, Mapping, Optional
 
@@ -48,7 +49,7 @@ def percentile(values: List[float], fraction: float) -> float:
 def cache_verdict(url: str, headers: Mapping[str, str], status: int) -> Dict[str, Any]:
     """Explain whether the engine could store this response and for how long."""
     lowered = _headers(headers)
-    path = url.split("?")[0]
+    path = urllib.parse.urlsplit(url).path
     static = is_static_asset(path)
     if status != 200:
         return {"cacheable": False, "reason": "status_not_cacheable", "ttl_seconds": 0}

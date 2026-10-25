@@ -34,11 +34,11 @@ Generated with `python refresh_docs.py`.
 - `apply_pending_invalidations` (line 136): Apply the invalidation notices published by the other workers.
 - `clear_cache` (line 146): Clear the local cache and tell the other workers to clear theirs.
 - `_handle_get` (line 151): Serve a public cached representation or its conditional response.
-- `_send_304` (line 175): Retain origin cache and security headers on conditional cache hits.
-- `_age_value` (line 185): Report the origin age plus the time the entry spent in this cache.
-- `_send_cached` (line 196): Send cached content with validators matching the transformed bytes.
-- `_passthrough_and_cache` (line 204): Optimize a bounded response while respecting ASGI streaming semantics.
-- `get_status` (line 209): Return a host-dashboard snapshot without credentials, URLs or payloads.
+- `_send_304` (line 176): Retain origin cache and security headers on conditional cache hits.
+- `_age_value` (line 186): Report the origin age plus the time the entry spent in this cache.
+- `_send_cached` (line 190): Send cached content with validators matching the transformed bytes.
+- `_passthrough_and_cache` (line 198): Optimize a bounded response while respecting ASGI streaming semantics.
+- `get_status` (line 203): Return a host-dashboard snapshot without credentials, URLs or payloads.
 
 ## booster/bypass.py
 
@@ -106,11 +106,11 @@ Generated with `python refresh_docs.py`.
 
 ## booster/django_support.py
 
-- `DjangoRocketMiddleware` (line 12): Cache only explicitly public, bounded and non-streaming Django responses.
-- `__init__` (line 15): Initialize the downstream callable and bounded optimization services.
-- `__call__` (line 24): Bypass personalized requests and invalidate derived reads around writes.
-- `_cached_response` (line 47): Restore headers with a length matching the cached representation.
-- `_store_response` (line 58): Cache only a public response and correct validators after minification.
+- `DjangoRocketMiddleware` (line 13): Cache only explicitly public, bounded and non-streaming Django responses.
+- `__init__` (line 16): Initialize the downstream callable and bounded optimization services.
+- `__call__` (line 25): Bypass personalized requests and invalidate derived reads around writes.
+- `_cached_response` (line 48): Restore headers with a length matching the cached representation.
+- `_store_response` (line 60): Cache only a public response and correct validators after minification.
 
 ## booster/doctor.py
 
@@ -121,16 +121,21 @@ Generated with `python refresh_docs.py`.
 - `_command_path` (line 78): Return the resolved path of an installed console script.
 - `format_report` (line 85): Render the installation report as a short text block.
 
+## booster/file_bus_lock.py
+
+- `file_bus_lock` (line 10): Fail closed if a peer cannot release its lock within five seconds.
+
 ## booster/http_policy.py
 
-- `is_static_asset` (line 13): Check if the path represents an immutable or public static asset.
-- `cache_directives` (line 19): Parse case-insensitive cache directive names without substring matches.
-- `request_cacheable` (line 25): Exclude personalized, conditional and explicitly uncached requests.
-- `response_age` (line 37): Read the Age header as the number of seconds the response is already old.
-- `response_cacheable` (line 45): Store only responses safe for a shared representation cache.
-- `response_ttl` (line 67): Bound static cache retention by the shortest declared freshness limit.
-- `filtered_headers` (line 80): Remove hop-by-hop fields including fields nominated by Connection.
-- `merge_vary` (line 88): Preserve existing negotiation fields while adding compression.
+- `is_static_asset` (line 16): Check if the path represents an immutable or public static asset.
+- `cache_directives` (line 22): Parse case-insensitive cache directive names without substring matches.
+- `request_cacheable` (line 28): Exclude personalized, conditional and explicitly uncached requests.
+- `response_age` (line 40): Read the Age header as the number of seconds the response is already old.
+- `cached_response_age` (line 46): Advance the origin age by monotonic resident time for every adapter.
+- `response_cacheable` (line 53): Store only responses safe for a shared representation cache.
+- `response_ttl` (line 75): Bound static cache retention by the shortest declared freshness limit.
+- `filtered_headers` (line 90): Remove hop-by-hop fields including fields nominated by Connection.
+- `merge_vary` (line 98): Preserve existing negotiation fields while adding compression.
 
 ## booster/initializer.py
 
@@ -141,17 +146,17 @@ Generated with `python refresh_docs.py`.
 
 ## booster/invalidation.py
 
-- `InvalidationBus` (line 16): Publish and observe invalidation notices.
-- `LocalInvalidationBus` (line 26): Keep invalidation inside the current process.
-- `FileInvalidationBus` (line 36): Exchange notices through one shared file, for workers on the same host.
-- `publish` (line 19): Publish one notice for the other workers.
-- `drain` (line 22): Return the notices published since the last drain.
-- `publish` (line 29): Ignore the notice because no other worker exists.
-- `drain` (line 32): Return no notices.
-- `__init__` (line 45): Open the shared notice file for reading and later appending.
-- `publish` (line 53): Append one notice for the other workers.
-- `drain` (line 59): Read the notices written since the last drain.
-- `_truncate_if_large` (line 66): Truncate the notice file so it cannot grow without bound.
+- `InvalidationBus` (line 20): Publish and observe invalidation notices.
+- `LocalInvalidationBus` (line 30): Keep invalidation inside the current process.
+- `FileInvalidationBus` (line 41): Exchange notices through one shared file, for workers on the same host.
+- `publish` (line 23): Publish one notice for the other workers.
+- `drain` (line 26): Return the notices published since the last drain.
+- `publish` (line 33): Ignore the notice because no other worker exists.
+- `drain` (line 36): Return no notices.
+- `__init__` (line 49): Initialize one independent cursor over the bounded shared journal.
+- `_header` (line 61): Initialize or migrate the journal to the shared generation protocol.
+- `publish` (line 72): Append a complete notice or rotate to a full-clear generation.
+- `drain` (line 83): Read complete records, treating any generation change as a full clear.
 
 ## booster/local_security.py
 
@@ -164,14 +169,14 @@ Generated with `python refresh_docs.py`.
 
 ## booster/measurement.py
 
-- `_headers` (line 22): Lowercase the response headers for the engine's policy rules.
-- `fetch_once` (line 27): Fetch the URL once and return its status, headers, size and duration.
-- `percentile` (line 39): Return one percentile of the measured durations.
-- `cache_verdict` (line 48): Explain whether the engine could store this response and for how long.
-- `measure` (line 61): Measure one URL repeatedly and return a structured report.
-- `hosting_hint` (line 85): Explain a refusal that an upstream proxy may have caused.
-- `format_report` (line 102): Render the report as a short operator-friendly text block.
-- `measure_or_error` (line 121): Measure the URL and return None when it cannot be reached.
+- `_headers` (line 23): Lowercase the response headers for the engine's policy rules.
+- `fetch_once` (line 28): Fetch the URL once and return its status, headers, size and duration.
+- `percentile` (line 40): Return one percentile of the measured durations.
+- `cache_verdict` (line 49): Explain whether the engine could store this response and for how long.
+- `measure` (line 62): Measure one URL repeatedly and return a structured report.
+- `hosting_hint` (line 86): Explain a refusal that an upstream proxy may have caused.
+- `format_report` (line 103): Render the report as a short operator-friendly text block.
+- `measure_or_error` (line 122): Measure the URL and return None when it cannot be reached.
 
 ## booster/minifier.py
 
@@ -228,12 +233,15 @@ Generated with `python refresh_docs.py`.
 
 ## booster/site_config.py
 
-- `SiteConfig` (line 29): One site's route policy and cache limits.
-- `attach_from_config` (line 83): Attach the engine to an application using a declarative configuration.
-- `_paths` (line 93): Validate a list of absolute route prefixes.
-- `_optional_paths` (line 103): Validate an optional list of absolute route prefixes.
-- `_positive_number` (line 110): Validate a positive numeric setting.
-- `from_dict` (line 42): Build a configuration from a mapping and reject unknown settings.
+- `SiteConfig` (line 30): One site's route policy and cache limits.
+- `attach_from_config` (line 88): Attach the engine to an application using a declarative configuration.
+- `_paths` (line 95): Validate a list of absolute route prefixes.
+- `_optional_paths` (line 105): Validate an optional list of absolute route prefixes.
+- `_positive_number` (line 112): Validate a positive numeric setting.
+- `_boolean` (line 120): Reject misspelled booleans instead of coercing strings to true.
+- `_positive_bytes` (line 127): Validate a whole-byte budget before it reaches the cache.
+- `_invalidation_file` (line 135): Accept only an explicit notice path or no shared bus.
+- `from_dict` (line 43): Build a configuration from a mapping and reject unknown settings.
 - `from_file` (line 60): Read a configuration from a JSON file.
 - `cache_policy` (line 67): Build the route policy for this site.
 - `attach_options` (line 71): Build the keyword arguments for the engine attach call.
@@ -287,7 +295,8 @@ Generated with `python refresh_docs.py`.
 - `prepare_demo` (line 37): Catch up an outdated local demo without replacing unpublished work.
 - `verified_download` (line 47): Download and validate the trusted exact-commit compressed dev build.
 - `promote` (line 65): Verify first, then use the shared merge helper and immediately push demo.
-- `main` (line 90): Preview promotion unless this invocation explicitly authorizes it.
+- `verify_promotion` (line 90): Push immediately and verify the authorized merge retained the tested tree.
+- `main` (line 100): Preview promotion unless this invocation explicitly authorizes it.
 
 ## run.py
 
@@ -330,9 +339,12 @@ Generated with `python refresh_docs.py`.
 - `runInit` (line 16): Generate the adapter and, when asked, the matching site configuration.
 - `usage` (line 26): Print the command help.
 - `parseArgs` (line 37): Parse the command arguments without a dependency on a parser library.
-- `runMeasure` (line 53): Measure one URL and report whether the engine could store the response.
-- `runDoctor` (line 85): Report the runtime and the engine version.
-- `main` (line 95): Run the command and report the created files.
+- `measureSample` (line 53): Fetch one bounded-time sample for the measurement command.
+- `runMeasure` (line 64): Measure one URL and report whether the engine could store the response.
+- `runDoctor` (line 91): Report the runtime and the engine version.
+- `measureCommand` (line 101): Parse measurement arguments and report failures with a nonzero process exit.
+- `runMeasure` (line 108): TypeScript declaration.
+- `main` (line 114): Run the command and report the created files.
 
 ## booster-node/src/compressor.ts
 
@@ -353,6 +365,10 @@ Generated with `python refresh_docs.py`.
 - `EngineState` (line 35): TypeScript declaration.
 - `ResponseContext` (line 45): TypeScript declaration.
 
+## booster-node/src/file-bus-lock.ts
+
+- `withFileBusLock` (line 5): Fail closed if a peer cannot release its lock within five seconds.
+
 ## booster-node/src/header-guard.ts
 
 - `protectedHeaders` (line 5): Preserve both supported writeHead header forms while replacing edge directives.
@@ -364,8 +380,8 @@ Generated with `python refresh_docs.py`.
 - `trackMutation` (line 38): Clear before/after mutations and invalidate older in-flight capture contexts.
 - `invalidate` (line 44): TypeScript declaration.
 - `applyPendingInvalidations` (line 50): Apply the invalidation notices published by the other workers.
-- `bypassReason` (line 58): Record why this request may not use the shared cache.
-- `booster` (line 67): Construct one bounded engine while preserving the existing middleware API.
+- `bypassReason` (line 59): Record why this request may not use the shared cache.
+- `booster` (line 68): Construct one bounded engine while preserving the existing middleware API.
 
 ## booster-node/src/initializer.ts
 
@@ -381,17 +397,18 @@ Generated with `python refresh_docs.py`.
 
 ## booster-node/src/invalidation.ts
 
-- `InvalidationBus` (line 8): Publish and observe invalidation notices.
-- `publish` (line 9): TypeScript declaration.
-- `drain` (line 10): TypeScript declaration.
-- `LocalInvalidationBus` (line 14): Keep invalidation inside the current process.
-- `publish` (line 16): Ignore the notice because no other worker exists.
-- `drain` (line 18): Return no notices.
-- `FileInvalidationBus` (line 22): Exchange notices through one shared file, for workers on the same host.
-- `constructor` (line 29): Open the shared notice file for reading and later appending.
-- `publish` (line 38): Append one notice for the other workers.
-- `drain` (line 44): Read the notices written since the last drain.
-- `close` (line 56): Release the notice file handle.
+- `InvalidationBus` (line 10): Publish and observe invalidation notices.
+- `publish` (line 11): TypeScript declaration.
+- `drain` (line 12): TypeScript declaration.
+- `LocalInvalidationBus` (line 16): Keep invalidation inside the current process.
+- `publish` (line 18): Ignore the notice because no other worker exists.
+- `drain` (line 20): Return no notices.
+- `FileInvalidationBus` (line 24): Exchange notices through one shared file, for workers on the same host.
+- `constructor` (line 32): Open the shared notice file for reading and later appending.
+- `header` (line 43): Initialize or migrate the generation header shared with Python.
+- `publish` (line 59): Append one notice for the other workers.
+- `drain` (line 70): Read the notices written since the last drain.
+- `close` (line 88): Retain the lifecycle API; each operation now closes its own file handle.
 
 ## booster-node/src/minifier.ts
 
@@ -403,19 +420,19 @@ Generated with `python refresh_docs.py`.
 
 ## booster-node/src/policy.ts
 
-- `responseBlocksCache` (line 10): Retain outer host privacy decisions on hits as well as misses.
-- `varyAccepted` (line 19): Accept only the negotiation fields the site declared it may ignore.
-- `directives` (line 26): Parse directives without substring matching or ambiguous duplicate values.
-- `requestAllowed` (line 36): Check credentials and caller revalidation before any shared lookup.
-- `originAge` (line 46): Include already-aged origin responses when computing their remaining lifetime.
-- `responseTTL` (line 55): Bound RAM TTL by all origin freshness policies and prohibit private variants.
-- `RoutePolicy` (line 76): Select cacheable routes without embedding website-specific rules.
-- `matches` (line 82): Match complete route names or explicitly slash-terminated subtrees.
-- `routeAllowed` (line 87): Apply the route policy: exclusions win, and an empty include list selects nothing.
-- `CacheVerdict` (line 96): Explain whether the engine could store a response and for how long.
-- `cacheVerdict` (line 103): Judge a plain header record with the engine's own cacheability rules.
-- `snapshotHeaders` (line 130): Save original end-to-end headers without connection-specific transport fields.
-- `edgePolicy` (line 143): Protect private and uncacheable replies from edge storage.
+- `responseBlocksCache` (line 11): Retain outer host privacy decisions on hits as well as misses.
+- `varyAccepted` (line 20): Accept only the negotiation fields the site declared it may ignore.
+- `directives` (line 27): Parse directives without substring matching or ambiguous duplicate values.
+- `requestAllowed` (line 37): Check credentials and caller revalidation before any shared lookup.
+- `originAge` (line 47): Include already-aged origin responses when computing their remaining lifetime.
+- `responseTTL` (line 56): Bound RAM TTL by all origin freshness policies and prohibit private variants.
+- `RoutePolicy` (line 77): Select cacheable routes without embedding website-specific rules.
+- `matches` (line 83): Match complete route names or explicitly slash-terminated subtrees.
+- `routeAllowed` (line 88): Apply the route policy: exclusions win, and an empty include list selects nothing.
+- `CacheVerdict` (line 97): Explain whether the engine could store a response and for how long.
+- `cacheVerdict` (line 104): Judge a plain header record with the engine's own cacheability rules.
+- `snapshotHeaders` (line 117): Save original end-to-end headers without connection-specific transport fields.
+- `edgePolicy` (line 130): Protect private and uncacheable replies from edge storage.
 
 ## booster-node/src/response.ts
 
@@ -436,8 +453,10 @@ Generated with `python refresh_docs.py`.
 - `paths` (line 24): Validate a list of absolute route prefixes.
 - `positive` (line 36): Validate a positive numeric setting.
 - `siteConfigFrom` (line 45): Build a configuration from a parsed JSON document and reject unknown settings.
-- `loadSiteConfig` (line 67): Read a configuration from one JSON file.
-- `optionsFrom` (line 76): Build the engine options for a declarative configuration.
+- `optionalSettings` (line 59): TypeScript declaration.
+- `optionalSettings` (line 64): Reject malformed optional settings instead of silently disabling a shared bus.
+- `loadSiteConfig` (line 78): Read a configuration from one JSON file.
+- `optionsFrom` (line 87): Build the engine options for a declarative configuration.
 
 ## booster-node/src/status.ts
 
@@ -477,6 +496,7 @@ graph TD
   django_support --> http_policy
   django_support --> minifier
   django_support --> telemetry
+  invalidation --> file_bus_lock
   local_security --> asgi_response
   measurement --> http_policy
   proxy --> asgi_response
@@ -495,5 +515,6 @@ graph TD
   server --> proxy
   server --> updater
   site_config --> cache_policy
+  site_config --> invalidation
   telemetry --> cache
 ```

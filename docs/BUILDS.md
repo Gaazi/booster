@@ -50,14 +50,17 @@ python -m scripts.promote_demo
 When the user requests promotion for this occasion, run:
 
 ```powershell
-python -m scripts.promote_demo --authorized
+python -m scripts.promote_demo --authorized --authorization-note "merge dev to demo"
 ```
 
 The command requires Git, an authenticated GitHub CLI, the shared agent merge
 helper, a clean `dev` checkout matching `origin/dev`, a successful dev
-CI run, and a downloaded bundle with matching commit/checksums. It forces a
-fast-forward through the shared merge helper and immediately pushes `demo`.
-GitHub then checks the same artifact on `demo`. No force push, automatic conflict
+CI run, and a downloaded bundle with matching commit/checksums. It invokes the
+shared merge helper with the user's actual instruction and immediately pushes
+`demo`. It checks that the resulting tree equals the verified dev tree and that
+the tested commit is an ancestor. The helper records authorization in a merge
+commit, so GitHub builds and verifies that new demo commit. An identical SHA can
+reuse an existing dev artifact as described above. No force push, automatic conflict
 resolution, main merge or deployment is performed.
 Preview only verifies/downloads the dev build. During an authorized promotion,
 an outdated local `demo` catches up to `origin/demo` only by fast-forward fetch;

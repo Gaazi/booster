@@ -107,7 +107,7 @@ Booster provides seven core architectural facilities:
 ### 2.8 Shared Invalidation Between Workers (`invalidation.py`)
 - **The Stale Window It Closes:** Every worker owns its own RAM cache, so a write that reaches one worker leaves the other workers serving an old copy until their entry expires.
 - **Opt-In Bus (`InvalidationBus`):** The worker that handled the write publishes the invalidation scope; every other worker applies it before it serves its next request. Without a bus the documented process-local behaviour is unchanged.
-- **File-Backed Bus (`FileInvalidationBus`):** Standard-library only, for workers on one host. Each worker keeps its own read position, so one worker never consumes another worker's notice. The file is truncated when it grows past its size limit, and a reader that notices the truncation applies a full clear, because that is the only safe reading of a lost notice.
+- **File-Backed Bus (`FileInvalidationBus`):** Standard-library only, for workers on one host. Python and Node share generation-tagged JSON records and a bounded directory lock. Rotation forces existing readers to clear even after the journal refills. Peer invalidations retire in-flight Node capture contexts. See `INTEGRATION.md` for coordinated upgrades, local-filesystem limits and lock recovery.
 - **Scope Fidelity:** The published notice matches the local scope exactly: a prefix notice for surgical invalidation, a full-clear notice otherwise.
 - **Proven With Real Processes:** `tests/test_shared_invalidation.py` runs two worker processes and proves the peer returns fresh bytes after the other worker wrote, and that the process-local boundary is unchanged when no bus is configured.
 

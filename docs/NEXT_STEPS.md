@@ -59,7 +59,7 @@ and local measurements. Live/physical-phone performance is still unverified.
    a server when an operator installs it inside the virtualenv.
 3. **Node parity:** the Node engine now matches the Python engine on route
    policy, site configuration, status snapshot, bypass reasons and shared
-   invalidation. 47 native regressions run against canonical TS and the
+   invalidation. 57 native regressions run against canonical TS and the
    installed generated package. Remaining limits: no Node release is published
    to a registry yet, and framework adapters (Next.js, Fastify) are still
    host-owned.

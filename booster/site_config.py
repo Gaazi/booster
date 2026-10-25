@@ -7,6 +7,7 @@ invalid setting.
 """
 
 import json
+import math
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Mapping, Optional, Tuple
@@ -46,14 +47,13 @@ class SiteConfig:
             raise ValueError(f"Unknown site configuration keys: {', '.join(unknown)}")
         return cls(
             include_paths=_optional_paths(data.get("include_paths")),
-            exclude_paths=_paths(data.get("exclude_paths") or ()),
+            exclude_paths=_paths(data.get("exclude_paths", ())),
             cache_ttl=_positive_number(data.get("cache_ttl", 300.0), "cache_ttl"),
-            max_cache_bytes=_positive_number(data.get("max_cache_bytes", 64 * 1024 * 1024),
-                                            "max_cache_bytes"),
-            enable_compression=bool(data.get("enable_compression", True)),
-            enable_minification=bool(data.get("enable_minification", True)),
-            surgical_invalidation=bool(data.get("surgical_invalidation", False)),
-            invalidation_file=data.get("invalidation_file"),
+            max_cache_bytes=_positive_bytes(data.get("max_cache_bytes", 64 * 1024 * 1024)),
+            enable_compression=_boolean(data.get("enable_compression", True), "enable_compression"),
+            enable_minification=_boolean(data.get("enable_minification", True), "enable_minification"),
+            surgical_invalidation=_boolean(data.get("surgical_invalidation", False), "surgical_invalidation"),
+            invalidation_file=_invalidation_file(data.get("invalidation_file")),
         )
 
     @classmethod
@@ -70,7 +70,7 @@ class SiteConfig:
 
     def attach_options(self) -> Dict[str, Any]:
         """Build the keyword arguments for the engine attach call."""
-        return {
+        options = {
             "cache_policy": self.cache_policy(),
             "cache_ttl": self.cache_ttl,
             "max_cache_bytes": int(self.max_cache_bytes),
@@ -78,16 +78,18 @@ class SiteConfig:
             "enable_minification": self.enable_minification,
             "surgical_invalidation": self.surgical_invalidation,
         }
+        if self.invalidation_file:
+            from booster.invalidation import FileInvalidationBus
+
+            options["invalidation_bus"] = FileInvalidationBus(self.invalidation_file)
+        return options
 
 
 def attach_from_config(app: Any, config: SiteConfig) -> Any:
     """Attach the engine to an application using a declarative configuration."""
     import booster
 
-    options = config.attach_options()
-    if config.invalidation_file:
-        options["invalidation_bus"] = booster.FileInvalidationBus(config.invalidation_file)
-    return booster.attach(app, **options)
+    return booster.attach(app, **config.attach_options())
 
 
 def _paths(value: Any) -> Tuple[str, ...]:
@@ -109,6 +111,29 @@ def _optional_paths(value: Any) -> Optional[Tuple[str, ...]]:
 
 def _positive_number(value: Any, name: str) -> float:
     """Validate a positive numeric setting."""
-    if isinstance(value, bool) or not isinstance(value, (int, float)) or value <= 0:
+    if (isinstance(value, bool) or not isinstance(value, (int, float))
+            or not math.isfinite(value) or value <= 0):
         raise ValueError(f"{name} must be a positive number")
+    return value
+
+
+def _boolean(value: Any, name: str) -> bool:
+    """Reject misspelled booleans instead of coercing strings to true."""
+    if not isinstance(value, bool):
+        raise ValueError(f"{name} must be a boolean")
+    return value
+
+
+def _positive_bytes(value: Any) -> int:
+    """Validate a whole-byte budget before it reaches the cache."""
+    number = _positive_number(value, "max_cache_bytes")
+    if int(number) != number:
+        raise ValueError("max_cache_bytes must be a positive integer")
+    return int(number)
+
+
+def _invalidation_file(value: Any) -> Optional[str]:
+    """Accept only an explicit notice path or no shared bus."""
+    if value is not None and (not isinstance(value, str) or not value.strip() or "\0" in value):
+        raise ValueError("invalidation_file must be a nonempty path string or null")
     return value

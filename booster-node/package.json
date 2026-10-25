@@ -1,6 +1,6 @@
 {
   "name": "booster-node",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Zero-dependency ultra-fast caching, minification, and compression booster for Express, Next.js, Fastify, and Node.js.",
   "main": "dist/index.js",
   "types": "./dist/index.d.ts",
